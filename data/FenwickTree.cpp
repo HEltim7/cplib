@@ -8,11 +8,11 @@ struct Fenwick {
         aim+=val;
     }
 
-    void add(int pos,T val) {
+    void add(std::size_t pos,T val) {
         while(pos<=N) update(tr[pos],val),pos+=lowbit(pos);
     }
 
-    T query(int pos) {
+    T query(std::size_t pos) {
         T res=0;
         while(pos) update(res,tr[pos]),pos-=lowbit(pos);
         return res;
