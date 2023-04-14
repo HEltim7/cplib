@@ -29,16 +29,30 @@
  *   但考虑此头文件的使用场景,这个bug基本不会被触发
  */
 
-#include<iostream>
+#include <iostream>
 
 namespace debug {
 
     using namespace std;
 
-    int MAXSIZE = 100;  //max output size
-    ostream &os = cerr; //default ostream
+    inline int MAXSIZE = 100;  //max output size
+    inline ostream &os = cerr; //default ostream
+
+    inline ostream &operator<<(ostream &os,unsigned __int128 x) {
+        string res;
+        while(x) res.push_back(x%10+'0'),x/=10;
+        if(res.empty()) res.push_back('0');
+        while(res.size()) os<<res.back(),res.pop_back();
+        return os;
+    }
+
+    inline ostream &operator<<(ostream &os,__int128 x) {
+        if(x<0) return os<<'-'<<-x;
+        return os<<(unsigned __int128)x;
+    }
 
     struct Stream {
+
 
         template<typename T> 
         void output_impl(const T &var) {
@@ -105,7 +119,7 @@ namespace debug {
             stream.output(" = ");
         }
 
-        ~NameLogger() { stream.endline(); stream.output("--- end of debugging log ---"); }
+        // ~NameLogger() { stream.endline(); stream.output("--- end of debugging log ---"); }
 
     } static logn(0);
 
@@ -127,6 +141,25 @@ namespace debug {
             print(p[r]);
             stream.output(flag ? "...]" : "]");
         }
+
+#ifdef _GLIBCXX_ARRAY
+
+        template<typename T, std::size_t Nm> void
+        print(const array<T, Nm> &var) {
+            if(var.empty()) return;
+            bool flag = 0;
+            int l = 0, r = Nm - 1;
+            if(r - l + 1 > MAXSIZE) r = l + MAXSIZE - 1, flag = 1;
+            stream.output('[');
+            for(int i = l; i < r; i++) {
+                print(var[i]);
+                stream.output(',');
+            }
+            print(var[r]);
+            stream.output(flag ? "...]" : "]");
+        }
+
+#endif
 
         template<typename T, typename U> void
         print(const pair<T,U> &var) {
@@ -292,13 +325,6 @@ namespace debug {
         }
 
 #ifdef _GLIBCXX_VECTOR
-        template<typename... T> void
-        unpack(string name, int idx, const vector<T...> &var) {
-            logn.print(name,idx);
-            logv.print(var,0,var.size()-1);
-            stream.endline();
-        }
-
         template<typename... T, typename... U> void
         unpack(string name, int idx, const vector<T...> &var, int l, int r, const U&... vars) {
             logn.print(name,idx,l,r);
@@ -312,4 +338,5 @@ namespace debug {
     
 } // namespace debug
 
-#define debug(...) debug::unpacker.unpack("[debug] "#__VA_ARGS__, 0 __VA_OPT__(,) __VA_ARGS__)
+// #define debug(...) debug::unpacker.unpack("[debug] "#__VA_ARGS__, 0 __VA_OPT__(,) __VA_ARGS__)
+#define debug(...) debug::unpacker.unpack("["+string(__func__)+" "+to_string(__LINE__)+"] " #__VA_ARGS__, 0 __VA_OPT__(,) __VA_ARGS__)

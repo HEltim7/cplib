@@ -1,5 +1,5 @@
-namespace io {
-    const int MAXBUF = 1e6;
+namespace fast_io {
+    constexpr int MAXBUF = 1e6;
     char buf[MAXBUF], *pl, *pr;
 
     #define gc() \
@@ -18,8 +18,12 @@ namespace io {
         return x = x * f;
     }
 
-    template<typename... T> void reads_impl(T&... x) { (rd(x),...); }
+    template<typename... T> auto read(T&... x) { return (rd(x),...); }   
+    #undef gc
 
-    #define read(x) io::rd(x)
-    #define reads(...) io::reads_impl(__VA_ARGS__)
+    struct IO {
+        template<typename T> friend IO&
+        operator>>(IO &io, T& x) { rd(x); return io; }
+    } static io;
 }
+using fast_io::read,fast_io::io;

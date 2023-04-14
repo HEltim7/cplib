@@ -1,5 +1,5 @@
-namespace io {
-    const int MAXBUF = 1e6, MAXLEN = 1e6;
+namespace fast_io {
+    constexpr int MAXBUF = 1 << 20, MAXLEN = 1 << 20;
     char buf[MAXBUF], *pl, *pr;
     char str[MAXLEN];
 
@@ -37,12 +37,10 @@ namespace io {
 
     string rd(string &s) { return s = rd(str); }
 
-    template<typename... T> void reads_impl(T&... x) { (rd(x),...); }
+    template<typename... T> auto read(T&... x) { return (rd(x),...); }
+    #undef gc
 
-    #define read(x) io::rd(x)
-    #define reads(...) io::reads_impl(__VA_ARGS__)
-
-    const int MAXPBUF = 1e6, PRECISION = 7;
+    constexpr int MAXPBUF = 1 << 20, PRECISION = 7;
     char pbuf[MAXPBUF], *pp = pbuf;
 
     void clear_buffer() { fwrite(pbuf, 1, pp-pbuf, stdout), pp = pbuf; }
@@ -84,12 +82,17 @@ namespace io {
     void wt(const double &x, int p = PRECISION) { wt_f(x,p); }
     void wt(const long double &x, int p = PRECISION) { wt_f(x,p); }
 
-    template<typename... T> void writes_impl(const T&... x) { (wt(x),...); }
+    template<typename... T> void write(const T&... x) { (wt(x),...); }
+    template<typename T> void writef(const T &x,const int &p) { wt_f(x,p); }
 
-    #define write(...) io::wt(__VA_ARGS__)
-    #define writes(...) io::writes_impl(__VA_ARGS__)
+    struct IO {
+        template<typename T> friend IO& 
+        operator>>(IO &io, T& x) { rd(x); return io; }
 
-    struct Exit {
-        ~Exit() { clear_buffer(); }
-    } static exit;
-}
+        template<typename T> friend IO&
+        operator<<(IO &io, const T& x) { wt(x); return io; }
+
+        ~IO() { clear_buffer(); }
+    } static io;
+
+} using fast_io::read,fast_io::write,fast_io::writef,fast_io::io;
