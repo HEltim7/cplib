@@ -49,7 +49,7 @@ log=logging.getLogger('pyjudge')
 
 class Judger:
 
-    # exe=编译完的二进制程序路径名，out=临时输出文件路径名，dir=测试数据目录名，tle=时限，std=是否为标程
+    # exe=编译完的二进制程序路径名，out=临时输出文件路径名，dir=测试数据目录名，tle=时限，std=是否当作标程处理
     def run(self,exe,out,dir,tle,std):
         accepted,total,slowest=0,0,0
 
@@ -140,11 +140,11 @@ def main():
 
     log.info('Running...')
     judger=Judger()
-    accepted,total,slowest=judger.run(exe_file,out_file,args.dir,float(args.tle),args.std)
+    accepted,total,slowest=judger.run(exe_file,out_file,args.dir,float(args.tle),args.save)
     work_dir.cleanup()
 
     log.info('')
-    if(not args.std): log.info('Accepted '+str(accepted)+' / '+str(total))
+    if(not args.save): log.info('Accepted '+str(accepted)+' / '+str(total))
     log.info('Slowest: '+ansi.green(str(int(slowest*1000)))+' ms ')
 
 if __name__ == "__main__":
