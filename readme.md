@@ -39,9 +39,9 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
   - 最近公共祖先
     - [倍增](./Templates/graph/lca_binary_lifting.cpp)
     - [树剖](./Templates/graph/lca_heavy_light_decomposition.cpp)
-    - [强连通分量](./Templates/graph/tarjan.cpp)
-    - [最大流](./Templates/graph/maximum_flow.cpp)
-    - [费用流](./Templates/graph/minimum_cost_maximum_flow.cpp)
+  - [强连通分量](./Templates/graph/tarjan.cpp)
+  - [最大流](./Templates/graph/maximum_flow.cpp)
+  - [费用流](./Templates/graph/minimum_cost_maximum_flow.cpp)
 - math 数学
   - [Modint](./Templates/math/modint.cpp)
   - [组合数](./Templates/math/combinatorial_number.cpp)
