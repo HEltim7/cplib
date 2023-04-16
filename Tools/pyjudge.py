@@ -83,6 +83,19 @@ class Judger:
             # 否则，将标准输出与.out文件进行对比
             elif(outp.exists()):
                 total+=1
+
+                # 检查数据文件编码（但是不检查测试代码的输出）
+                def check_decode(file_path):
+                    try:
+                        with file_path.open() as f: f.readline()
+                    except UnicodeDecodeError as err:
+                        log.error(file_path.name+ansi.bold_red(" unknown file encoding"))
+                        return False
+                    return True
+
+                if(not check_decode(inp)): continue
+                if(not check_decode(outp)): continue
+
                 ac,line_cnt=1,0
                 good,duration=_run(Path(out))
                 slowest=max(slowest,duration)
