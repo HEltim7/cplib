@@ -12,7 +12,7 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
   - `snippet.cpp` 用来将Templates中的代码转化为vscode snippets
   - `pyjudge.py` 简易对拍/评测脚本
 
-算法目录：
+算法模板目录：
 
 > 这个目录并不是完整的Templates内容~~而且我大概率会忘记更新~~。
 
@@ -25,7 +25,7 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
     - [线段树合并](./Templates/data_structures/merge_split_segment_tree.cpp)
   - 并查集
     - [并查集](./Templates/data_structures/disjoint_union_set.cpp)
-    - [并查集，带集合大小维护](./Templates/data_structures/disjoint_union_set.cpp)
+    - [可撤销并查集](./Templates/data_structures/undoable_disjoint_union_set.cpp)
   - [树链剖分](./Templates/data_structures/heavy_path_decomposition.cpp)
   - [字典树](./Templates/data_structures/trie.cpp)
   - [稀疏表](./Templates/data_structures/sparse_table.cpp)
@@ -54,6 +54,7 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
 - string 字符串
   - [kmp](./Templates/string/kmp.cpp)
   - [AC自动机](./Templates/string/aho_corasick_automaton.cpp)
+  - [后缀数组](./Templates/string/suffix_array.cpp)
   - 后缀自动机
     - [SAM](./Templates/string/suffix_automaton.cpp)
     - [SAM 拓扑序](./Templates/string/suffix_automaton_toporder.cpp)
