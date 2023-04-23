@@ -30,7 +30,7 @@
 
 # config
 !.gitignore
-!*_snippets.json
+!*_snippets.jsonc
 
 # re-ignore
 .vscode

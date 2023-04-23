@@ -1,14 +1,4 @@
-/**
-	# Index
-	--------
-	- General
-	- Data Structures
-	- Dynamic Programming
-	- Graph
-	- Math
-	- String
-	- Misc
-*/{
+{
     "[DP] Convex Hull Trick": {
         "body": [
             "LL dp(int n) {",
@@ -1655,27 +1645,27 @@
     "[Math] Euler's Totient Function": {
         "body": [
             "constexpr int M=${1:1e6+10};",
-            "int prime[M],euler[M],idx;",
+            "int prime[M],phi[M],idx;",
             "bool isnp[M];",
             "",
             "void get_prime(int n=M-1) {",
-            "    isnp[1]=euler[1]=1;",
+            "    isnp[1]=phi[1]=1;",
             "    for(int i=2;i<=n;i++) {",
-            "        if(!isnp[i]) prime[++idx]=i,euler[i]=i-1;",
+            "        if(!isnp[i]) prime[++idx]=i,phi[i]=i-1;",
             "        for(int j=1;prime[j]<=n/i;j++) {",
             "            isnp[prime[j]*i]=true;",
             "            if(i%prime[j]==0) {",
-            "                euler[i*prime[j]]=euler[i]*prime[j];",
+            "                phi[i*prime[j]]=phi[i]*prime[j];",
             "                break;",
             "            }",
-            "            else euler[i*prime[j]]=euler[i]*(prime[j]-1);",
+            "            else phi[i*prime[j]]=phi[i]*(prime[j]-1);",
             "        }",
             "    }",
             "}"
         ],
         "description": [
             "线性筛求欧拉函数 O(n)",
-            "euler[i] 表示 小于等于i和i互质的个数"
+            "phi[i] 表示 小于等于i和i互质的个数"
         ],
         "prefix": "#euler_func"
     },
@@ -1695,6 +1685,34 @@
             "此外,x,y的通解形式分别为x+kb/gcd(a,b),y-ka/gcd(a,b)"
         ],
         "prefix": "#exgcd"
+    },
+    "[Math] Factorization": {
+        "body": [
+            "template<typename T> vector<T> get_prime_factor(T x) {",
+            "    vector<T> res;",
+            "    for(T i=2;i*i<=x;i++) {",
+            "        if(x%i==0) {",
+            "            while(x%i==0) x/=i;",
+            "            res.push_back(i);",
+            "        }",
+            "    }",
+            "    if(x>1) res.push_back(x);",
+            "    return res;",
+            "}",
+            "",
+            "template<typename T> vector<T> get_factor(T x) {",
+            "    vector<T> res;",
+            "    for(T i=1;i*i<=x;i++) {",
+            "        if(x%i==0) {",
+            "            res.push_back(i);",
+            "            if(x/i!=i) res.push_back(x/i);",
+            "        }",
+            "    }",
+            "    return res;",
+            "}"
+        ],
+        "description": "因数分解/质因数分解 O(sqrt(n))",
+        "prefix": "#factorization"
     },
     "[Math] Matrix": {
         "body": [
