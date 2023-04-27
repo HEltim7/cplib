@@ -1,14 +1,14 @@
 struct Info {
-    
+
     void init(int l,int r) {
         if(l!=r) return;
-        
+
     }
     void init(int l) { init(l,l); }
 
-    Info operator+(const Info &r) const {
+    friend Info operator+(const Info &l,const Info &r) {
         Info res;
-        
+
         return res;
     }
 

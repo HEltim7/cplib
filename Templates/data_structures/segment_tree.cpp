@@ -1,39 +1,33 @@
 struct Lazy {
-    
+
     void clear() {
-        
+
     }
 
-    Lazy operator+(const Lazy &x) const {
-        Lazy res;
-        
-        return res;
-    }
+    Lazy &operator+=(const Lazy &x) {
 
-    Lazy operator+=(const Lazy &x) { return *this=*this+x; }
+        return *this;
+    }
 };
 
 struct Info {
-    
+
     void init(int l,int r) {
         if(l!=r) return;
-        
+
     }
     void init(int l) { init(l,l); }
 
-    Info operator+(const Info &r) const {
+    friend Info operator+(const Info &l,const Info &r) {
         Info res;
-        
+
         return res;
     }
 
-    Info operator+(const Lazy &x) const {
-        Info res;
-        
-        return res;
-    }
+    Info &operator+=(const Lazy &x) {
 
-    Info operator+=(const Lazy &x) { return *this=*this+x; }
+        return *this;
+    }
 
     Info()=default;
     Info(int l) { init(l); }
