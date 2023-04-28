@@ -11,10 +11,6 @@ struct Info {
 
         return res;
     }
-
-    Info()=default;
-    Info(int l) { init(l); }
-    Info(int l,int r) { init(l,r); }
 };
 
 template<class Info,int size> struct SegmentTree {
@@ -65,7 +61,7 @@ template<class Info,int size> struct SegmentTree {
         }
         else leaf[l]=u;
     }
-    void build(int l,int r) { build(1,l,r); }
+    void build(int l=1,int r=size) { build(1,l,r); }
 
     #undef lch
     #undef rch

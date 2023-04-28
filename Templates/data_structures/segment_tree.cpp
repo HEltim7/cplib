@@ -28,10 +28,6 @@ struct Info {
 
         return *this;
     }
-
-    Info()=default;
-    Info(int l) { init(l); }
-    Info(int l,int r) { init(l,r); }
 };
 
 template<class Info,class Lazy,int size> struct SegmentTree {
@@ -105,7 +101,7 @@ template<class Info,class Lazy,int size> struct SegmentTree {
             pushup(u);
         }
     }
-    void build(int l,int r) { build(1,l,r); }
+    void build(int l=1,int r=size) { build(1,l,r); }
 
     #undef lch
     #undef rch
