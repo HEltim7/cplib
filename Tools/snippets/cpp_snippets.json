@@ -1041,9 +1041,10 @@
     },
     "[General] Data Generator": {
         "body": [
+            "#include <algorithm>",
+            "#include <cstdint>",
             "#include <fstream>",
             "#include <iostream>",
-            "#include <algorithm>",
             "#include <testlib.h>",
             "using namespace std;",
             "",
@@ -1053,7 +1054,7 @@
             "",
             "void solve() {",
             "    for(int z=1;z<=files;z++) {",
-            "        fstream fout(to_string(z)+\".in\",ios::out);",
+            "        fstream fout(\"data/\"+to_string(z)+\".in\",ios::out);",
             "        $0",
             "    }",
             "}",
