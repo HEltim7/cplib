@@ -105,7 +105,7 @@ class Judger:
 
 
 class Tester:
-    def get_testcases(self,dir:Path,save_output:bool) -> list[Path]:
+    def get_testcases(self,dir:Path,save_output:bool,check_exist:bool) -> list[Path]:
         def check_decode(file:Path):
             try:
                 with file.open() as f: f.readline()
@@ -119,16 +119,17 @@ class Tester:
             if not check_decode(inp): continue
             outp=inp.parent.joinpath(inp.stem+'.out')
             if save_output:
-                if not outp.exists():
-                    outp.touch()
-                if check_decode(outp): res.append(inp)
-            elif outp.exists():
-                if check_decode(outp): res.append(inp)
+                if not outp.exists(): outp.touch()
+                res.append(inp)
+            elif check_exist:
+                if outp.exists() and check_decode(outp): res.append(inp)
+            else:
+                res.append(inp)
         return res
 
     def run(self,cmd:list,dir:Path,save_output:bool) -> tuple[int,int,float]:
         runner=Runner(self.tle)
-        data=self.get_testcases(dir,save_output)
+        data=self.get_testcases(dir,save_output,False)
         ok,tot,slowest=0,len(data),0
         for inp in data:
             outp=inp.parent.joinpath(inp.stem+'.out')
@@ -148,7 +149,7 @@ class Tester:
     def judge(self,cmd:list,outp:Path,dir:Path) -> tuple[int,int,float]:
         runner=Runner(self.tle)
         judger=Judger()
-        data=self.get_testcases(dir,False)
+        data=self.get_testcases(dir,False,True)
         ok,tot,slowest=0,len(data),0
         for inp in data:
             good,time_used=runner.run(cmd,inp,outp)
