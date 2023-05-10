@@ -5,8 +5,11 @@ import logging
 import argparse
 import tempfile
 import itertools 
+import traceback
 import subprocess
 from pathlib import Path
+
+_DEBUG=False
 
 # [Ansi Colors](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
 class Ansi:
@@ -129,14 +132,17 @@ class Tester:
         ok,tot,slowest=0,len(data),0
         for inp in data:
             outp=inp.parent.joinpath(inp.stem+'.out')
-            good,time_uesd=runner.run(cmd,inp,outp if save_output else Path(os.devnull))
+            good,time_used=runner.run(cmd,inp,outp if save_output else Path(os.devnull))
             if not good: continue
             log.info(
-                inp.name+' '+ansi.green('Finished')+
-                ', Executed in '+ansi.green(str(int(time_uesd*1000)))+' ms'
+                '%(input)s %(verdict)s, Executed in %(time)s ms'% {
+                    'input':inp.name,
+                    'verdict':ansi.green('Finished'),
+                    'time':ansi.green(str(int(time_used*1000)))
+                }
             )
             ok+=1
-            slowest=max(slowest,time_uesd)
+            slowest=max(slowest,time_used)
         return ok,tot,slowest
 
     def judge(self,cmd:list,outp:Path,dir:Path) -> tuple[int,int,float]:
@@ -152,17 +158,25 @@ class Tester:
             ac,line,ans,out=judger.compare(ansp,outp)
             if ac:
                 log.info(
-                    inp.name+' '+ansi.green('Accepted')+
-                    ', Executed in '+ansi.green(str(int(time_used*1000)))+' ms'
+                    '%(input)s %(verdict)s, Executed in %(time)s ms'% {
+                        'input':inp.name,
+                        'verdict':ansi.green('Accepted'),
+                        'time':ansi.green(str(int(time_used*1000)))
+                    }
                 )
             else:
                 log.warning(
-                    inp.name+' '+ansi.red('Wrong Answer')+
-                    ' on line '+ansi.red(str(line))+
-                    ', expected: "'+ansi.green(ans)+'", read: "'+ansi.red(out)+
-                    '", Executed in '+ansi.red(str(int(time_used*1000)))+' ms'
+                    '%(input)s %(verdict)s on line %(line)s: "%(ans)s" <-> "%(out)s", Executed in %(time)s ms'% {
+                        'input':inp.name,
+                        'verdict':ansi.red('Wrong Answer'),
+                        'line':ansi.red(str(line)),
+                        'ans':ansi.green(ans),
+                        'out':ansi.red(out),
+                        'time':ansi.red(str(int(time_used*1000)))
+                    }
                 )
             ok+=ac
+            slowest=max(slowest,time_used)
         return ok,tot,slowest
 
     def hack(self,test:list,std:list,gen:list,inp:Path,ansp:Path,outp:Path) -> bool:
@@ -180,9 +194,12 @@ class Tester:
             ac,line,ans,out=judger.compare(ansp,outp)
             if not ac:
                 log.warning(
-                    ansi.red('Wrong Answer')+
-                    ' on line '+ansi.red(str(line))+
-                    ', expected: "'+ansi.green(ans)+'", read: "'+ansi.red(out)+'"'
+                    '%(verdict)s on line %(line)s: "%(ans)s" <-> "%(out)s"'% {
+                        'verdict':ansi.red('Wrong Answer'),
+                        'line':ansi.red(str(line)),
+                        'ans':ansi.green(ans),
+                        'out':ansi.red(out),
+                    }
                 )
                 return True
 
@@ -197,6 +214,7 @@ def main():
         epilog='examples: https://github.com/HEltim7/cplib/blob/master/Tools/pyjudge.md'
     )
     parser.add_argument('-v','--version',action='version',version='%(prog)s 1.0.3 by HEltim7')
+    parser.add_argument('--debug',help='enable debugging',action='store_true')
     subparsers=parser.add_subparsers(dest='subparser',help='action')
 
     judge_parser=subparsers.add_parser('judge',help='run and judge code by given testcases')
@@ -220,6 +238,8 @@ def main():
     args=parser.parse_args()
     action=args.subparser
     tester=Tester(args.tle)
+    global _DEBUG
+    _DEBUG=args.debug
 
     handler=logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
@@ -318,5 +338,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         log.warning('KeyboardInterrupt')
     except Exception as err:
+        if _DEBUG: traceback.print_exc()
         log.error(ansi.bold_red('Unknown Error')+' '+str(err))
+        exit(1)
     else: log.info('Finished in %.3f s\n'%(end-start))
