@@ -1,10 +1,10 @@
-struct Lazy {
+struct Tag {
 
     void clear() {
 
     }
 
-    Lazy &operator+=(const Lazy &x) {
+    Tag &operator+=(const Tag &x) {
 
         return *this;
     }
@@ -24,13 +24,13 @@ struct Info {
         return res;
     }
 
-    Info &operator+=(const Lazy &x) {
+    Info &operator+=(const Tag &x) {
 
         return *this;
     }
 };
 
-template<class Info,class Lazy,int size> struct SegmentTree {
+template<class Info,class Tag,int size> struct SegmentTree {
     #define lch (u<<1)
     #define rch (u<<1|1)
 
@@ -38,13 +38,13 @@ template<class Info,class Lazy,int size> struct SegmentTree {
         bool clean;
         int l,r;
         Info info;
-        Lazy lazy;
+        Tag tag;
         void init(int l,int r) {
             clean=1;
             this->l=l;
             this->r=r;
             info.init(l, r);
-            lazy.clear();
+            tag.clear();
         }
     };
 
@@ -54,18 +54,18 @@ template<class Info,class Lazy,int size> struct SegmentTree {
         tr[u].info=tr[lch].info+tr[rch].info;
     }
 
-    void update(Node &ch, const Lazy &x) {
+    void update(Node &ch, const Tag &x) {
         ch.clean=0;
         ch.info+=x;
-        ch.lazy+=x;
+        ch.tag+=x;
     }
 
     void pushdn(int u) {
         if(tr[u].clean) return;
-        update(tr[lch],tr[u].lazy);
-        update(tr[rch],tr[u].lazy);
+        update(tr[lch],tr[u].tag);
+        update(tr[rch],tr[u].tag);
         tr[u].clean=1;
-        tr[u].lazy.clear();
+        tr[u].tag.clear();
     }
 
     Info query(int u,int l,int r) {
@@ -80,7 +80,7 @@ template<class Info,class Lazy,int size> struct SegmentTree {
     }
     Info query(int l,int r) { return query(1,l,r); }
 
-    void modify(int u,int l,int r,const Lazy &v) {
+    void modify(int u,int l,int r,const Tag &v) {
         if(tr[u].l>=l&&tr[u].r<=r) { update(tr[u],v); }
         else {
             pushdn(u);
@@ -90,7 +90,7 @@ template<class Info,class Lazy,int size> struct SegmentTree {
             pushup(u);
         }
     }
-    void modify(int l,int r,const Lazy &v) { modify(1,l,r,v); }
+    void modify(int l,int r,const Tag &v) { modify(1,l,r,v); }
 
     void build(int u,int l,int r) {
         tr[u].init(l,r);
@@ -106,4 +106,4 @@ template<class Info,class Lazy,int size> struct SegmentTree {
     #undef lch
     #undef rch
 };
-SegmentTree<Info, Lazy, N> sgt;
+SegmentTree<Info, Tag, N> sgt;

@@ -1,55 +1,86 @@
-struct PersistentSegmentTree {
+struct Info {
 
-    #define lch tr[u].ch[0]
-    #define rch tr[u].ch[1]
-    constexpr static int MAX_SIZE=N*20*2;
+    void init(int l,int r) {
+        if(l!=r) return;
+        
+    }
+    void init(int l) { init(l,l); }
+
+    friend Info operator+(const Info &l,const Info &r) {
+        Info res;
+        
+        return res;
+    }
+};
+
+template<class Info,int node_size,int root_size,int rng_l,int rng_r>
+struct PersistentSegmentTree {
+    #define lch(u) (tr[u].ch[0])
+    #define rch(u) (tr[u].ch[1])
 
     struct Node {
+        Info info;
         int ch[2];
-        int cnt;
-    } tr[MAX_SIZE];
-    int idx;
+        void init(int l,int r) {
+            info.init(l,r);
+        }
+    };
+
+    array<int, root_size> root;
+    array<Node, node_size> tr;
+    int idx,ver;
 
     int new_node() {
-        // assert(idx<MAX_SIZE);
+        assert(idx<node_size);
         return ++idx;
     }
 
     void pushup(int u) {
-        tr[u].cnt=tr[lch].cnt+tr[rch].cnt;
+        tr[u].info=tr[lch(u)].info+tr[rch(u)].info;
     }
 
-    void modify(int &u,int v,int l,int r,int p) {
+    Info query(int u,const int ql,const int qr,int l=rng_l,int r=rng_r) {
+        if(l>=ql&&r<=qr) { return tr[u].info; }
+        else {
+            int mid=(l+r)/2;
+            if(mid>=ql&&mid<qr) 
+                return query(lch(u),ql,qr,l,mid)+query(rch(u),ql,qr,mid+1,r);
+            else if(mid>=ql) return query(lch(u),ql,qr,l,mid);
+            return query(rch(u),ql,qr,mid+1,r);
+        }
+    }
+
+    void modify(int &u,int v,const int p,const Info &val,int l=rng_l,int r=rng_r) {
         u=new_node();
         tr[u]=tr[v];
-        if(l==r) tr[u].cnt++;
+        if(l==r) tr[u].info=val;
         else {
-            int mid=l+r>>1;
-            if(p<=mid) modify(lch, tr[v].ch[0], l, mid, p);
-            else modify(rch, tr[v].ch[1], mid+1, r, p);
+            int mid=(l+r)/2;
+            if(p<=mid) modify(lch(u),lch(v),p,val,l,mid);
+            else modify(rch(u),rch(v),p,val,mid+1,r);
             pushup(u);
         }
     }
 
-    int kth(int u,int v,int l,int r,int k) {
-        if(l==r) return l;
-        int mid=l+r>>1;
-        int lcnt=tr[lch].cnt-tr[tr[v].ch[0]].cnt;
-        if(lcnt>=k) return kth(lch, tr[v].ch[0], l, mid, k);
-        return kth(rch, tr[v].ch[1], mid+1, r, k-lcnt);
+    void append(int p,const Info &val) {
+        assert(ver<root_size);
+        ver++;
+        modify(root[ver],root[ver-1],p,val);
     }
 
     void build(int &u,int l,int r) {
         u=new_node();
-        tr[u]={l,r};
+        tr[u].init(l,r);
         if(l!=r) {
             int mid=l+r>>1;
-            build(lch,l,mid);
-            build(rch,mid+1,r);
+            build(lch(u),l,mid);
+            build(rch(u),mid+1,r);
+            pushup(u);
         }
     }
+    void build() { build(root[0],rng_l,rng_r); }
 
     #undef lch
     #undef rch
-
-} sgt;
+};
+PersistentSegmentTree<Info, N*__lg(N)*4, N*2, 1, N> sgt;
