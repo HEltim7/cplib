@@ -1,4 +1,4 @@
-template<class Info,class Tag,int size> struct SegmentTree {
+template<class Info,int size> struct SegmentTree {
     #define lch ((u)<<1)
     #define rch ((u)<<1|1)
 
@@ -27,11 +27,11 @@ template<class Info,class Tag,int size> struct SegmentTree {
 
     template<class F>
     int find_first(int u,int l,int r,int x,int y,F check) {
-        if(l>y||r<x||!check(info[u])) return -1;
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
         if(l==r) return l;
         int mid=(l+r)/2;
-        int res=find(lch,mid+1,r,x,y,check);
-        if(res==-1) res=find(rch,l,mid,x,y,check);
+        int res=find_first(lch,l,mid,x,y,check);
+        if(res==-1) res=find_first(rch,mid+1,r,x,y,check);
         return res;
     }
     template<class F> int find_first(int l,int r,F check) {
@@ -40,11 +40,11 @@ template<class Info,class Tag,int size> struct SegmentTree {
 
     template<class F>
     int find_last(int u,int l,int r,int x,int y,F check) {
-        if(l>y||r<x||!check(info[u])) return -1;
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
         if(l==r) return l;
         int mid=(l+r)/2;
-        int res=find(rch,l,mid,x,y,check);
-        if(res==-1) res=find(lch,mid+1,r,x,y,check);
+        int res=find_last(rch,mid+1,r,x,y,check);
+        if(res==-1) res=find_last(lch,l,mid,x,y,check);
         return res;
     }
     template<class F> int find_last(int l,int r,F check) {
