@@ -1,11 +1,21 @@
 # 数据结构
 
 - [树状数组](#树状数组)
+  - [树状数组](#树状数组-1)
   - [树状数组上二分](#树状数组上二分)
 - [线段树](#线段树)
+  - [线段树](#线段树-1)
+  - [单点修改线段树](#单点修改线段树)
   - [可持久化线段树](#可持久化线段树)
+  - [势能线段树](#势能线段树)
   - [线段树合并/分裂](#线段树合并分裂)
 - [字典树](#字典树)
+  - [字典树](#字典树-1)
+  - [01-字典树](#01-字典树)
+  - [可持久化01-字典树](#可持久化01-字典树)
+- [并查集](#并查集)
+  - [并查集](#并查集-1)
+  - [可撤销并查集](#可撤销并查集)
 - [树链剖分](#树链剖分)
 - [稀疏表](#稀疏表)
 - [Link Cut Tree](#link-cut-tree)
@@ -19,6 +29,8 @@
 树状数组是最为小巧实用的数据结构之一，能在$\mathcal{O}(\log n)$的时间复杂度内进行单点修改+区间查询。通过维护差分数组也可以实现区间修改+单点查询。
 
 树状数组通过前缀和相减来完成区间操作，所以要求维护的信息具有可减性，否则无法使用树状数组维护。
+
+### 树状数组
 
 ```cpp
 template<typename T=int> struct Fenwick {
@@ -63,125 +75,467 @@ int kth(int k) {
 
 线段树能够灵活地维护区间信息，区间修改与查询均为$\mathcal{O}(\log n)$，常数较大。
 
+### 线段树
+
 ```cpp
-struct SegmentTree {
-    #define lch (u<<1)
-    #define rch (u<<1|1)
-    constexpr static int MAXSIZE=N;
+template<class Info,class Tag,int size> struct SegmentTree {
+    #define lch ((u)<<1)
+    #define rch ((u)<<1|1)
 
-    struct Node {
-        int l,r;
-
-    } tr[MAXSIZE<<2];
+    int rng_l,rng_r;
+    constexpr static int node_size=1<<__lg(size)<<2|1;
+    array<Tag, node_size> tag;
+    array<Info, node_size> info;
+    array<bool, node_size> clean;
 
     void pushup(int u) {
+        info[u]=info[lch]+info[rch];
+    }
 
+    void update(int u, const Tag &t) {
+        info[u]+=t;
+        tag[u]+=t;
+        clean[u]=0;
     }
 
     void pushdn(int u) {
-
+        if(clean[u]) return;
+        update(lch, tag[u]);
+        update(rch, tag[u]);
+        clean[u]=1;
+        tag[u].clear();
     }
 
-    void modify(int u,int l,int r,int val) {
-        if(tr[u].l>=l&&tr[u].r<=r) {}
+    Info query(int u,int l,int r,int x,int y) {
+        if(l>y||r<x) return {};
+        if(l>=x&&r<=y) return info[u];
+        pushdn(u);
+        int mid=(l+r)/2;
+        return query(lch,l,mid,x,y)+query(rch,mid+1,r,x,y);
+    }
+    Info query(int l,int r) { return query(1,rng_l,rng_r,l,r); }
+
+    void modify(int u,int l,int r,int x,int y,const Tag &t) {
+        if(l>y||r<x) return;
+        if(l>=x&&r<=y) update(u, t);
         else {
             pushdn(u);
-            int mid=tr[u].l+tr[u].r>>1;
-            if(mid>=l) modify(lch, l, r, val);
-            if(mid<r) modify(rch, l, r, val);
+            int mid=(l+r)/2;
+            if(mid>=x) modify(lch,l,mid,x,y,t);
+            if(mid<y) modify(rch,mid+1,r,x,y,t);
             pushup(u);
         }
     }
+    void modify(int l,int r,const Tag &t) { modify(1,rng_l,rng_r,l,r,t); }
 
-    int query(int u,int l,int r) {
-        if(tr[u].l>=l&&tr[u].r<=r) {}
-        else {
-            pushdn(u);
-            int mid=tr[u].l+tr[u].r>>1;
-            
-            if(mid>=l) query(lch, l, r);
-            if(mid<r) query(rch, l, r);
-        }
+    template<class F>
+    int find_first(int u,int l,int r,int x,int y,F check) {
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
+        if(l==r) return l;
+        pushdn(u);
+        int mid=(l+r)/2;
+        int res=find_first(lch,l,mid,x,y,check);
+        if(res==-1) res=find_first(rch,mid+1,r,x,y,check);
+        return res;
+    }
+    template<class F> int find_first(int l,int r,F check) {
+        return find_first(1,rng_l,rng_r,l,r,check);
+    }
+
+    template<class F>
+    int find_last(int u,int l,int r,int x,int y,F check) {
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
+        if(l==r) return l;
+        pushdn(u);
+        int mid=(l+r)/2;
+        int res=find_last(rch,mid+1,r,x,y,check);
+        if(res==-1) res=find_last(lch,l,mid,x,y,check);
+        return res;
+    }
+    template<class F> int find_last(int l,int r,F check) {
+        return find_last(1,rng_l,rng_r,l,r,check);
     }
 
     void build(int u,int l,int r) {
-        tr[u]={l,r};
-        if(l==r) {}
-        else {
-            int mid=l+r>>1;
-            build(lch, l, mid);
-            build(rch, mid+1, r);
+        clean[u]=1;
+        info[u].init(l,r);
+        tag[u].clear();
+        if(l!=r) {
+            int mid=(l+r)/2;
+            build(lch,l,mid);
+            build(rch,mid+1,r);
             pushup(u);
         }
     }
+    void build(int l=1,int r=size) { build(1,rng_l=l,rng_r=r); }
 
     #undef lch
     #undef rch
-} sgt;
+};
+
+struct Tag {
+
+    void clear() {
+
+    }
+
+    Tag &operator+=(const Tag &t) {
+
+        return *this;
+    }
+};
+
+struct Info {
+
+    void init(int l,int r) {
+        if(l!=r) return;
+
+    }
+    void init(int l) { init(l,l); }
+
+    friend Info operator+(const Info &l,const Info &r) {
+        Info res;
+
+        return res;
+    }
+
+    Info &operator+=(const Tag &t) {
+
+        return *this;
+    }
+};
+
+SegmentTree<Info, Tag, N> sgt;
+```
+
+### 单点修改线段树
+
+仅支持单点、修改常数更小更简短的实现。
+
+```cpp
+template<class Info,int size> struct SegmentTree {
+    #define lch ((u)<<1)
+    #define rch ((u)<<1|1)
+
+    int rng_l,rng_r;
+    constexpr static int node_size=1<<__lg(size)<<2|1;
+    array<Info, node_size> info;
+    array<int, size+1> leaf;
+
+    void pushup(int u) {
+        info[u]=info[lch]+info[rch];
+    }
+
+    Info query(int u,int l,int r,int x,int y) {
+        if(l>y||r<x) return {};
+        if(l>=x&&r<=y) return info[u];
+        int mid=(l+r)/2;
+        return query(lch,l,mid,x,y)+query(rch,mid+1,r,x,y);
+    }
+    Info query(int l,int r) { return query(1,rng_l,rng_r,l,r); }
+
+    void modify(int p,const Info &v) {
+        int u=leaf[p];
+        info[u]+=v;
+        while(u>>=1) pushup(u);
+    }
+
+    template<class F>
+    int find_first(int u,int l,int r,int x,int y,F check) {
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
+        if(l==r) return l;
+        int mid=(l+r)/2;
+        int res=find_first(lch,l,mid,x,y,check);
+        if(res==-1) res=find_first(rch,mid+1,r,x,y,check);
+        return res;
+    }
+    template<class F> int find_first(int l,int r,F check) {
+        return find_first(1,rng_l,rng_r,l,r,check);
+    }
+
+    template<class F>
+    int find_last(int u,int l,int r,int x,int y,F check) {
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
+        if(l==r) return l;
+        int mid=(l+r)/2;
+        int res=find_last(rch,mid+1,r,x,y,check);
+        if(res==-1) res=find_last(lch,l,mid,x,y,check);
+        return res;
+    }
+    template<class F> int find_last(int l,int r,F check) {
+        return find_last(1,rng_l,rng_r,l,r,check);
+    }
+
+    void build(int u,int l,int r) {
+        info[u].init(l,r);
+        if(l!=r) {
+            int mid=(l+r)/2;
+            build(lch,l,mid);
+            build(rch,mid+1,r);
+            pushup(u);
+        }
+        else leaf[l]=u;
+    }
+    void build(int l=1,int r=size) { build(1,rng_l=l,rng_r=r); }
+
+    #undef lch
+    #undef rch
+};
+
+struct Info {
+
+    void init(int l,int r) {
+        if(l!=r) return;
+
+    }
+    void init(int l) { init(l,l); }
+
+    friend Info operator+(const Info &l,const Info &r) {
+        Info res;
+
+        return res;
+    }
+
+    Info &operator+=(const Info &v) {
+        
+        return *this;
+    }
+};
+
+SegmentTree<Info, N> sgt;
 ```
 
 ### 可持久化线段树
 
 通过记录每次修改变化的节点，可以在保存历史信息的同时，大幅地压缩空间复杂度。
 
-区间第k大值查询的例子：
-
 ```cpp
+template<class Info,int node_size>
 struct PersistentSegmentTree {
+    int idx,rng_l,rng_r;
+    vector<int> root;
+    array<Info, node_size> info;
+    array<int, node_size> lch,rch;
 
-    #define lch tr[u].ch[0]
-    #define rch tr[u].ch[1]
-    constexpr static int MAX_SIZE=N*20*2;
-
-    struct Node {
-        int ch[2];
-        int cnt;
-    } tr[MAX_SIZE];
-    int idx;
+    int ver() {
+        return root.size()-1;
+    }
 
     int new_node() {
-        // assert(idx<MAX_SIZE);
+        assert(idx<node_size);
         return ++idx;
     }
 
-    void pushup(int u) {
-        tr[u].cnt=tr[lch].cnt+tr[rch].cnt;
+    int new_root() {
+        root.emplace_back();
+        return ver();
     }
 
-    void modify(int &u,int v,int l,int r,int p) {
+    void clone(int u,int v) {
+        info[u]=info[v];
+        lch[u]=lch[v];
+        rch[u]=rch[v];
+    }
+
+    void pushup(int u) {
+        info[u]=info[lch[u]]+info[rch[u]];
+    }
+
+    Info query(int u,int l,int r,int x,int y) {
+        if(l>y||r<x) return {};
+        if(l>=x&&r<=y) return info[u];
+        int mid=(l+r)/2;
+        return query(lch[u],l,mid,x,y)+query(rch[u],mid+1,r,x,y);
+    }
+    Info query(int u,int l,int r) {
+        return query(root[u],rng_l,rng_r,l,r);
+    }
+
+    Info range_query(int u,int v,int l,int r,int x,int y) {
+        if(l>y||r<x) return {};
+        if(l>=x&&r<=y) return info[u]-info[v];
+        int mid=(l+r)/2;
+        return range_query(lch[u],lch[v],l,mid,x,y)+
+               range_query(rch[u],rch[v],mid+1,r,x,y);
+    }
+    Info range_query(int u,int v,int l,int r) {
+        return range_query(root[u],root[v],rng_l,rng_r,l,r);
+    }
+
+    void modify(int &u,int v,int l,int r,int p,const Info &val) {
         u=new_node();
-        tr[u]=tr[v];
-        if(l==r) tr[u].cnt++;
+        clone(u, v);
+        if(l==r) info[u]+=val;
         else {
-            int mid=l+r>>1;
-            if(p<=mid) modify(lch, tr[v].ch[0], l, mid, p);
-            else modify(rch, tr[v].ch[1], mid+1, r, p);
+            int mid=(l+r)/2;
+            if(p<=mid) modify(lch[u],lch[v],l,mid,p,val);
+            else modify(rch[u],rch[v],mid+1,r,p,val);
             pushup(u);
         }
     }
+    void modify(int u,int v,int p,const Info &val) {
+        modify(root[u],root[v],rng_l,rng_r,p,val);
+    }
 
-    int kth(int u,int v,int l,int r,int k) {
+    int update(int p,const Info &val) {
+        new_root();
+        modify(root[ver()],root[ver()-1],rng_l,rng_r,p,val);
+        return ver();
+    }
+
+    template<class F>
+    int find_first(int u,int l,int r,int x,int y,F check) {
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
         if(l==r) return l;
-        int mid=l+r>>1;
-        int lcnt=tr[lch].cnt-tr[tr[v].ch[0]].cnt;
-        if(lcnt>=k) return kth(lch, tr[v].ch[0], l, mid, k);
-        return kth(rch, tr[v].ch[1], mid+1, r, k-lcnt);
+        int mid=(l+r)/2;
+        int res=find_first(lch[u],l,mid,x,y,check);
+        if(res==-1) res=find_first(rch[u],mid+1,r,x,y,check);
+        return res;
+    }
+    template<class F> int find_first(int u,int l,int r,F check) {
+        return find_first(root[u],rng_l,rng_r,l,r,check);
+    }
+
+    template<class F>
+    int find_last(int u,int l,int r,int x,int y,F check) {
+        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
+        if(l==r) return l;
+        int mid=(l+r)/2;
+        int res=find_last(rch[u],mid+1,r,x,y,check);
+        if(res==-1) res=find_last(lch[u],l,mid,x,y,check);
+        return res;
+    }
+    template<class F> int find_last(int u,int l,int r,F check) {
+        return find_last(root[u],rng_l,rng_r,l,r,check);
     }
 
     void build(int &u,int l,int r) {
         u=new_node();
-        tr[u]={l,r};
+        info[u].init(l,r);
         if(l!=r) {
-            int mid=l+r>>1;
-            build(lch,l,mid);
-            build(rch,mid+1,r);
+            int mid=(l+r)>>1;
+            build(lch[u],l,mid);
+            build(rch[u],mid+1,r);
+            pushup(u);
         }
     }
+    void build(int l,int r) {
+        build(root[new_root()],rng_l=l,rng_r=r);
+    }
+};
+
+struct Info {
+
+    void init(int l,int r) {
+        if(l!=r) return;
+
+    }
+    void init(int l) { init(l,l); }
+
+    friend Info operator+(const Info &l,const Info &r) {
+        Info res;
+        
+        return res;
+    }
+    
+    friend Info operator-(const Info &l,const Info &r) {
+        Info res;
+
+        return res;
+    }
+
+    Info &operator+=(const Info &v) {
+
+        return *this;
+    }
+};
+
+PersistentSegmentTree<Info, N*__lg(N)*4> sgt;
+```
+
+### 势能线段树
+
+```cpp
+struct Info {
+    bool final;
+
+    void init(int l,int r) {
+        if(l!=r) return;
+
+    }
+    void init(int l) { init(l,l); }
+
+    friend Info operator+(const Info &l,const Info &r) {
+        Info res;
+
+        return res;
+    }
+
+    void operator--(int) {
+        
+    }
+
+    explicit operator bool() const { return final; }
+};
+
+template<class Info,int size> struct SegmentTree {
+    #define lch (u<<1)
+    #define rch (u<<1|1)
+
+    struct Node {
+        int l,r;
+        Info info;
+        void init(int l,int r) {
+            this->l=l;
+            this->r=r;
+            info.init(l, r);
+        }
+    };
+
+    array<Node, 1<<__lg(size)<<2|1> tr;
+
+    void pushup(int u) {
+        tr[u].info=tr[lch].info+tr[rch].info;
+    }
+
+    Info query(int u,int l,int r) {
+        if(tr[u].l>=l&&tr[u].r<=r) { return tr[u].info; }
+        else {
+            int mid=(tr[u].l+tr[u].r)/2;
+            if(mid>=l&&mid<r) return query(lch,l,r)+query(rch,l,r);
+            else if(mid>=l) return query(lch,l,r);
+            return query(rch,l,r);
+        }
+    }
+    Info query(int l,int r) { return query(1,l,r); }
+
+    void release(int u,int l,int r) {
+        if(tr[u].info) return;
+        else if(tr[u].l==tr[u].r) tr[u].info--;
+        else {
+            int mid=(tr[u].l+tr[u].r)/2;
+            if(l<=mid) release(lch,l,r);
+            if(r>mid) release(rch,l,r);
+            pushup(u);
+        }
+    }
+    void release(int l,int r) { release(1,l,r); }
+
+    void build(int u,int l,int r) {
+        tr[u].init(l,r);
+        if(l!=r) {
+            int mid=(l+r)/2;
+            build(lch,l,mid);
+            build(rch,mid+1,r);
+            pushup(u);
+        }
+    }
+    void build(int l=1,int r=size) { build(1,l,r); }
 
     #undef lch
     #undef rch
-
-} sgt;
+};
+SegmentTree<Info, N> sgt;
 ```
 
 ### 线段树合并/分裂
@@ -273,6 +627,8 @@ struct MergeSplitSegmentTree {
 
 ## 字典树
 
+### 字典树
+
 ```cpp
 struct Trie {
     constexpr static int A=26,B='a';
@@ -299,6 +655,248 @@ struct Trie {
     Trie() { clear(); }
     Trie(int size) { tr.reserve(size); clear(); }
 } trie;
+```
+
+### 01-字典树
+
+```cpp
+template<typename I> struct BinaryTrie {
+    constexpr static int H=sizeof(I)*8-1;
+    struct Node {
+        int ch[2];
+        int cnt;
+    };
+    vector<Node> tr;
+
+    int new_node() {
+        tr.push_back({});
+        return tr.size()-1;
+    }
+
+    void insert(int v) {
+        for(int i=H,u=0;i>=0;i--) {
+            bool x=v>>i&1;
+            if(!tr[u].ch[x]) tr[u].ch[x]=new_node();
+            u=tr[u].ch[x];
+            tr[u].cnt++;
+        }
+    }
+
+    void erase(int v) {
+        for(int i=H,u=0;i>=0;i--) {
+            bool x=v>>i&1;
+            u=tr[u].ch[x];
+            tr[u].cnt--;
+        }
+    }
+
+    I xor_max(int v) {
+        I res{};
+        for(int i=H,u=0;i>=0;i--) {
+            bool x=v>>i&1^1;
+            if(tr[tr[u].ch[x]].cnt) {
+                res|=1<<i;
+                u=tr[u].ch[x];
+            }
+            else u=tr[u].ch[x^1];
+        }
+        return res;
+    }
+
+    void clear() {
+        tr.clear();
+        new_node();
+    }
+
+    explicit BinaryTrie(int size=0) {
+        tr.reserve(size*(H+1));
+        clear();
+    }
+};
+```
+
+### 可持久化01-字典树
+
+```cpp
+template<typename I> struct PersistentBinaryTrie {
+    constexpr static int H=sizeof(I)*8-1;
+    struct Node {
+        int ch[2];
+        int cnt;
+    };
+    vector<Node> tr;
+    vector<int> root;
+    
+    int ver() { return root.size()-1; }
+
+    int new_root() {
+        root.push_back({});
+        return ver();
+    }
+
+    int new_node() {
+        tr.push_back({});
+        return tr.size()-1;
+    }
+
+    void insert(int &rt,int v,int val) {
+        int u=rt=new_node();
+        tr[u]=tr[v];
+        for(int i=H;i>=0;i--) {
+            bool x=val>>i&1;
+            u=tr[u].ch[x]=new_node();
+            v=tr[v].ch[x];
+            tr[u]=tr[v];
+            tr[u].cnt++;
+        }
+    }
+    int insert(int val) {
+        new_root();
+        insert(root[ver()],root[ver()-1],val);
+        return ver();
+    }
+
+    I xor_max(int u,int val) {
+        u=root[u];
+        I res{};
+        for(int i=H;i>=0;i--) {
+            bool x=val>>i&1^1;
+            if(tr[tr[u].ch[x]].cnt) {
+                res|=1<<i;
+                u=tr[u].ch[x];
+            }
+            else u=tr[u].ch[x^1];
+        }
+        return res;
+    }
+
+    I range_xor_max(int u,int v,int val) {
+        u=root[u],v=root[v];
+        I res{};
+        for(int i=H;i>=0;i--) {
+            bool x=val>>i&1^1;
+            if(tr[tr[u].ch[x]].cnt-tr[tr[v].ch[x]].cnt) {
+                res|=1<<i;
+                u=tr[u].ch[x];
+                v=tr[v].ch[x];
+            }
+            else u=tr[u].ch[x^1],v=tr[v].ch[x^1];
+        }
+        return res;
+    }
+
+    void clear() {
+        tr.clear();
+        new_root();
+        new_node();
+    }
+
+    explicit PersistentBinaryTrie(int size=0) {
+        tr.reserve(size*(H+1));
+        clear();
+    }
+};
+```
+
+## 并查集
+
+### 并查集
+
+并查集能够高效地处理集合信息。
+
+```cpp
+struct DisjointUnionSet {
+    vector<int> fa,sz;
+
+    void init(int n) {
+        fa.resize(n+1);
+        sz.assign(n+1,1);
+        iota(fa.begin(), fa.end(), 0);
+    }
+
+    int find(int x) {
+        return x==fa[x]?x:fa[x]=find(fa[x]);
+    }
+
+    bool same(int x,int y) {
+        return find(x)==find(y);
+    }
+
+    bool join(int x,int y) {
+        x=find(x);
+        y=find(y);
+        if(x==y) return false;
+        // if(sz[x]<sz[y]) swap(x,y);
+        sz[x]+=sz[y];
+        fa[y]=x;
+        return true;
+    }
+
+    int size(int x) {
+        return sz[find(x)];
+    }
+
+    DisjointUnionSet() = default;
+    DisjointUnionSet(int n) { init(n); }
+} dsu;
+```
+
+### 可撤销并查集
+
+通过一个额外的栈保存修改历史来实现撤销操作。由启发式合并保证复杂度。
+
+```cpp
+struct DisjointUnionSet {
+    vector<int> fa,sz;
+    vector<pair<int&,int>> fah,szh;
+
+    void init(int n) {
+        fah.clear();
+        szh.clear();
+        fa.resize(n+1);
+        sz.assign(n+1,1);
+        iota(fa.begin(), fa.end(), 0);
+    }
+
+    int find(int x) {
+        while(x!=fa[x]) x=fa[x];
+        return x;
+    }
+
+    bool same(int x,int y) {
+        return find(x)==find(y);
+    }
+
+    bool join(int x,int y) {
+        x=find(x);
+        y=find(y);
+        if(x==y) {
+            fah.emplace_back(fa[0],fa[0]);
+            szh.emplace_back(sz[0],sz[0]);
+            return false;
+        }
+        if(sz[x]<sz[y]) swap(x,y);
+        fah.emplace_back(fa[y],fa[y]);
+        szh.emplace_back(sz[x],sz[x]);
+        sz[x]+=sz[y];
+        fa[y]=x;
+        return true;
+    }
+
+    void undo() {
+        assert(!fah.empty());
+        fah.back().first=fah.back().second;
+        szh.back().first=szh.back().second;
+        fah.pop_back(),szh.pop_back();
+    }
+
+    int size(int x) {
+        return sz[find(x)];
+    }
+
+    DisjointUnionSet() = default;
+    DisjointUnionSet(int n) { init(n); }
+} dsu;
 ```
 
 ## 树链剖分

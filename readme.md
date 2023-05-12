@@ -21,6 +21,7 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
   - 线段树
     - [线段树](./Templates/data_structures/segment_tree.cpp)
     - [线段树，仅单点修改](./Templates/data_structures/segment_tree_without_lazy_tag.cpp)
+    - [势能线段树](./Templates/data_structures/potential_segment_tree.cpp)
     - [可持久化线段树](./Templates/data_structures/persistent_segment_tree.cpp)
     - [线段树合并](./Templates/data_structures/merge_split_segment_tree.cpp)
   - 并查集
