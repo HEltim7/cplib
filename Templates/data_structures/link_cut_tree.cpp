@@ -1,32 +1,40 @@
+template
+<class Info,class Tag,int MAX_SIZE,bool CHECK_LINK=0,bool CHECK_CUT=0>
 struct LinkCutTree {
-    
     #define lch tr[u].ch[0]
     #define rch tr[u].ch[1]
     #define wch(u) (tr[tr[u].p].ch[1]==u)
-    constexpr static int MAX_SIZE=1e5+10;
 
     struct Node {
         int ch[2],p;
         bool rev;
-        
-    } tr[MAX_SIZE];
-    int stk[MAX_SIZE];
+        Info info;
+        Tag tag;
+        void update(const Tag &x) {
+            info.update(x);
+            tag.update(x);
+        }
+    };
+    array<Node, MAX_SIZE> tr;
+    array<int, MAX_SIZE> stk;
 
     bool is_root(int u) {
         return tr[tr[u].p].ch[0]!=u&&tr[tr[u].p].ch[1]!=u;
     }
 
     void pushup(int u) {
-        
-    }
-
-    void pushrev(int u) {
-        swap(lch,rch);
-        tr[u].rev^=1;
+        tr[u].info.pushup(tr[lch].info,tr[rch].info);
     }
 
     void pushdn(int u) {
-        if(tr[u].rev) pushrev(lch),pushrev(rch),tr[u].rev=0;
+        if(tr[u].rev) {
+            swap(lch,rch);
+            tr[lch].rev^=1,tr[rch].rev^=1;
+            tr[u].rev=0;
+        }
+        if(lch) tr[lch].update(tr[u].tag);
+        if(rch) tr[rch].update(tr[u].tag);
+        tr[u].tag.clear();
     }
 
     void rotate(int x) {
@@ -46,50 +54,100 @@ struct LinkCutTree {
             if(!is_root(fa=tr[u].p)) rotate(wch(u)==wch(fa)?fa:u);
     }
 
-    void access(int u) {
-        int t=u;
-        for(int v=0;u;v=u,u=tr[u].p)
+    int access(int u) {
+        int v=0;
+        for(;u;v=u,u=tr[u].p)
             splay(u),rch=v,pushup(u);
-        splay(t);
+        return v;
     }
 
     void make_root(int u) {
         access(u);
-        pushrev(u);
+        splay(u);
+        tr[u].rev^=1;
     }
 
     int split(int u,int v) {
         make_root(u);
         access(v);
+        splay(v);
         return v;
     }
 
     int find_root(int u) {
         access(u);
+        splay(u);
         while(lch) pushdn(u),u=lch;
         splay(u);
         return u;
     }
 
-    void link(int u,int v) {
+    bool same(int u,int v) {
         make_root(u);
-        if(find_root(v)!=u) tr[u].p=v;
+        return find_root(v)==u;
     }
 
-    void cut(int u,int v) {
+    bool link(int u,int v) {
         make_root(u);
-        if(find_root(v)==u&&rch==v&&!tr[v].ch[0])
-            rch=tr[v].p=0,pushup(u);
+        if(CHECK_LINK&&find_root(v)==u) return 0;
+        tr[u].p=v;
+        return 1;
     }
 
-    void modify(int u,int val) {
-        splay(u);
-
+    bool cut(int u,int v) {
+        make_root(u);
+        if(CHECK_CUT&&!(find_root(v)==u&&rch==v&&!tr[v].ch[0])) return 0;
+        else access(v),splay(u);
+        rch=tr[v].p=0;
         pushup(u);
+        return 1;
+    }
+
+    int lca(int u,int v) {
+        access(u);
+        return access(v);
+    }
+
+    int lca(int rt,int u,int v) {
+        make_root(rt);
+        return lca(u,v);
+    }
+
+    void modify(int u,const Tag &x) {
+        if(!is_root(u)) splay(u);
+        tr[u].update(x);
+    }
+
+    Info &info(int u) {
+        return tr[u].info;
     }
 
     #undef lch
     #undef rch
     #undef wch
+};
 
-} lct;
+struct Tag {
+
+    void update(const Tag &x) {
+        
+    }
+
+    void clear() {
+        
+    }
+};
+
+struct Info {
+
+    //* lch+parent+rch
+    void pushup(const Info &l,const Info &r) {
+        
+    }
+
+    void update(const Tag &x) {
+
+    }
+};
+
+LinkCutTree<Info,Tag,int(1e5)+10> lct;
