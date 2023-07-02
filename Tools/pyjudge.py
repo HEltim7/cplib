@@ -324,7 +324,7 @@ def main():
             
             log.info('')
             log.info(ansi.green('Hacking success')+
-                     ', testcase has save to '+ansi.blue_underline(str(hack_in)))
+                     ', testcase has been saved to '+ansi.blue_underline(str(hack_in)))
         else:
             log.info('')
             log.warning(ansi.red('Hacking failed'))
