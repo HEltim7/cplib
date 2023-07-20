@@ -1,17 +1,21 @@
 import os
+import sys
 import time
 import shutil
 import logging
 import argparse
 import tempfile
-import itertools 
+import itertools
+import threading
 import traceback
 import subprocess
+
+from enum import Enum,auto
 from pathlib import Path
 
-_DEBUG=False
+PYJUDGE_DEBUG=False
+PYJUDGE_SHOW_STDERR=True
 
-# [Ansi Colors](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
 class Ansi:
     color_green = '\x1b[32m'
     color_blue = '\x1b[34m'
@@ -34,7 +38,6 @@ class Ansi:
 ansi=Ansi()
 
 
-# [custom logger formatter](https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output)
 class CustomFormatter(logging.Formatter):
     def get_fmt(color):
         return '['+color('%(levelname)s')+'] %(message)s'
@@ -54,37 +57,229 @@ class CustomFormatter(logging.Formatter):
 log=logging.getLogger('pyjudge')
 
 
+class Verdict(Enum):
+    ACCEPTED                  = auto()
+    FINISHED                  = auto()
+    WRONG_ANSWER              = auto()
+    COMPILE_ERROR             = auto()
+    RUNTIME_ERROR             = auto()
+    TIME_LIMIT_EXCEEDED       = auto()
+    MEMORY_LIMIT_EXCEEDED     = auto()
+
+    UNKONWN_ERROR             = auto()
+    UNKONWN_FILE_TYPE         = auto()
+    UNKONWN_FILE_ENCODING     = auto()
+    NO_SUCH_FILE_OR_DIRECTORY = auto()
+
+    def format(self) -> str:
+        match self:
+            case Verdict.ACCEPTED: return ansi.green('Accepted')
+            case Verdict.FINISHED: return ansi.green('Finished')
+            case Verdict.WRONG_ANSWER: return ansi.red('Wrong Answer')
+            case Verdict.RUNTIME_ERROR: return ansi.magenta('Runtime Error')
+            case Verdict.COMPILE_ERROR: return ansi.bold_red('Compile Error')
+            case Verdict.TIME_LIMIT_EXCEEDED: return ansi.blue('Time Limit Exceeded')
+            case Verdict.MEMORY_LIMIT_EXCEEDED: return ansi.blue('Memory Limit Exceeded')
+
+            case Verdict.UNKONWN_FILE_TYPE: return ansi.bold_red('Unkonwn File Type')
+            case Verdict.UNKONWN_FILE_ENCODING: return ansi.bold_red('Unkonwn File Encoding')
+            case Verdict.NO_SUCH_FILE_OR_DIRECTORY: return ansi.bold_red('No Such File Or Directory')
+            case _: return ansi.bold_red('Unkonwn Error')
+
+
+class Result:
+    def __init__(self,verdict:Verdict,message:str='',time_used:float=0,memory_used:int=0):
+        self.verdict = verdict
+        self.message = message
+        self.time_used = time_used
+        self.memory_used = memory_used
+
+    def __iter__(self):
+        yield self.verdict
+        yield self.message
+        yield self.time_used
+        yield self.memory_used
+
+    def good(self) -> bool:
+        return self.verdict == Verdict.ACCEPTED or self.verdict == Verdict.FINISHED
+
+    def format(self) -> str:
+        def toMilli():
+            return str(int(self.time_used*1000))
+
+        res = self.verdict.format()
+        if self.message != '':
+            res += ' ' + self.message.replace('\n',' ')
+        match self.verdict:
+            case Verdict.ACCEPTED | Verdict.FINISHED:
+                res += ' Executed in %s ms'% ansi.green(toMilli())
+            case Verdict.WRONG_ANSWER:
+                res += ' Executed in %s ms'% ansi.red(toMilli())
+        return res
+
+
+class FileCtrl:
+    work_dir=tempfile.TemporaryDirectory(prefix='pyjudge_')
+    
+    @staticmethod
+    def workPath(filename:str) -> Path:
+        return Path(FileCtrl.work_dir.name).joinpath(filename)
+
+    @staticmethod
+    def getTestcases(dir:Path,touch_out:bool) -> list[tuple[Path,Path]]:
+        res=[]
+        for inp in dir.rglob('*.in'):
+            outp=inp.parent.joinpath(inp.stem+'.out')
+            if not outp.exists():
+                if touch_out:
+                    outp.touch()
+                    res.append((inp,outp))
+                else: res.append((inp,None))
+            else: res.append((inp,outp))
+        return res
+
+    @staticmethod
+    def findAvailableId(dir:Path,prefix:str,suffix:str) -> int:
+        if not dir.exists(): return 1
+        for i in itertools.count():
+            if not dir.joinpath(prefix+str(i+1)+suffix).exists():
+                return i+1
+
+    @staticmethod
+    def copyFile(source:Path,target:Path) -> None:
+        if not target.exists(): target.touch()
+        shutil.copyfile(source,target)
+
+    @staticmethod
+    def mergeFile(x:Path,y:Path,filename:str) -> Path:
+        ls = [x, y]
+        res = FileCtrl.workPath(filename)
+        with res.open('w') as out:
+            for i in ls:
+                with i.open('r') as f:
+                    for line in f:
+                        out.write(line)
+                    out.write('\n')
+        return res
+    
+    @staticmethod
+    def fileToStr(inp:Path) -> str:
+        with inp.open('r') as f:
+            return f.read()
+
+    @staticmethod
+    def clearup():
+        FileCtrl.work_dir.cleanup()
+
+
+class Compiler:
+    cpp_compiler       = ['g++']
+    cpp_compile_flags  = ['-std=c++20','-O2','-DONLINE_JUDGE']
+    c_compiler         = ['gcc']
+    c_compile_flags    = ['-std=c11','-O2','-DONLINE_JUDGE']
+    python_interpreter = ['python']
+    python_flags       = []
+
+    def run(self,cmd:list) -> Result:
+        try:
+            subprocess.run(cmd,check=True)
+        except subprocess.CalledProcessError as err:
+            return Result(Verdict.COMPILE_ERROR)
+        return Result(Verdict.FINISHED)
+
+    def compileCpp(self,inp:Path,outp:Path) -> Result:
+        return self.run(self.cpp_compiler+self.cpp_compile_flags+[inp,'-o',outp])
+
+    def compileC(self,inp:Path,outp:Path) -> Result:
+        return self.run(self.c_compiler+self.c_compile_flags+[inp,'-o',outp])
+
+    def processPython(self,inp:Path) -> list:
+        return self.python_interpreter + self.python_flags + [inp]
+
+    def process(self,inp:Path,name:str) -> tuple[Result,list]:
+        outp=FileCtrl.workPath(name)
+        match inp.suffix:
+            case '.cpp' | '.cc' | '.cxx' | '.c++' | '.cplusplus':
+                return self.compileCpp(inp,outp),outp
+            case '.c':
+                return self.compileC(inp,outp),outp
+            case '.py':
+                return Result(Verdict.FINISHED),self.processPython(inp)
+            case _:
+                return Result(Verdict.UNKONWN_FILE_TYPE),[]
+
+    def compileable(self,inp:Path) -> bool:
+        return inp.suffix in ['.cpp','.cc','.cxx','.c++','.cplusplus','.c']
+
+    # def __init__(self,
+    #     cpp_compiler:list,cpp_compile_flags:list,
+    #     c_compiler:list,c_compile_flags:list,
+    #     python_interpreter:list,python_flags:list
+    # ):
+    #     self.cpp_compiler       = cpp_compiler
+    #     self.cpp_compile_flags  = cpp_compile_flags
+    #     self.c_compiler         = c_compiler
+    #     self.c_compile_flags    = c_compile_flags
+    #     self.python_interpreter = python_interpreter
+    #     self.python_flags       = python_flags
+
+    def __init__(self):
+        pass
+
+
 class Runner:
-    def run(self,cmd:list,inp:Path,outp:Path) -> tuple[bool,float]:
+    def run(self,cmd:list,inp:Path,outp:Path,spj:bool=False) -> Result:
+        try:
+            with inp.open() as f: f.readline()
+        except UnicodeDecodeError as err:
+            return Result(Verdict.UNKONWN_FILE_ENCODING)
+
         if outp and not outp.exists(): outp.touch()
         try:
             start=time.time()
             subprocess.run(
-                cmd,stdin=inp.open('r'),
-                stdout=outp.open('w'),
-                # stderr=outp.open('w'),
+                cmd,
                 timeout=self.tle,
-                check=True
+                check=True,
+                stdin=inp.open('r'),
+                stdout=outp.open('w'),
+                stderr=sys.stderr if PYJUDGE_SHOW_STDERR
+                    else Path(os.devnull).open('w')
             )
             end=time.time()
         except subprocess.CalledProcessError as err:
-            log.warning(inp.name+' '+ansi.magenta('Runtime Error')+' '+str(err))
-            return False,0
+            if spj and err.returncode == 1:
+                return Result(Verdict.WRONG_ANSWER,FileCtrl.fileToStr(outp))
+            return Result(Verdict.RUNTIME_ERROR,str(err))
         except subprocess.TimeoutExpired as err:
-            log.warning(inp.name+' '+ansi.blue('Time Limit Exceeded'))
-            return False,self.tle
+            return Result(Verdict.TIME_LIMIT_EXCEEDED,'',self.tle)
         except Exception as err:
-            log.error(inp.name+' '+ansi.bold_red('Unknown Error')+' '+str(err))
-            return False,0
+            print(str(err))
+            return Result(Verdict.UNKONWN_ERROR,str(err))
         else:
-            return True,end-start
+            if spj:
+                return Result(Verdict.ACCEPTED,FileCtrl.fileToStr(outp))
+            return Result(Verdict.FINISHED,'',end-start)
+
+    def specialRun(self,cmd:list,inp:Path,outp:Path) -> Result:
+        return self.run(cmd,inp,outp,True)
 
     def __init__(self,tle:float) -> None:
         self.tle=tle
 
 
 class Judger:
-    def compare(self,ansp:Path,outp:Path) -> tuple[bool,int,str,str]:
+    def waResult(self,line:int,ans:str,out:str) -> Result:
+        return Result(
+            Verdict.WRONG_ANSWER,
+            'on line %(line)d: "%(ans)s" <-> "%(out)s"'% {
+                'line': line,
+                'ans': ansi.green(ans),
+                'out': ansi.red(out)
+            }
+        )
+
+    def compare(self,ansp:Path,outp:Path) -> Result:
         with ansp.open() as ansf, outp.open() as outf:
             line=0
             while True:
@@ -95,251 +290,274 @@ class Judger:
                     while len(out) < len(ans): out.append('')
                     while len(ans) < len(out): ans.append('')
                     for i,j in zip(ans,out):
-                        if i!=j:
-                            return False,line,i,j
+                        if i!=j: return self.waResult(line,i,j)
                 if not out or not ans: break
-        return True,0,'',''
+        return Result(Verdict.ACCEPTED)
+
+    def specialJudge(self,spj:list,inp:Path,outp:Path) -> Result:
+        in_out = FileCtrl.mergeFile(inp,outp,'in_out.txt')
+        res = Runner(60).specialRun(spj,in_out,FileCtrl.workPath('verdict.txt'))
+        return res
 
     def __init__(self) -> None:
         pass
 
 
 class Tester:
-    def get_testcases(self,dir:Path,save_output:bool,check_exist:bool) -> list[Path]:
-        def check_decode(file:Path):
-            try:
-                with file.open() as f: f.readline()
-            except UnicodeDecodeError as err:
-                log.error(file.name+' '+ansi.bold_red('unknown file encoding'))
-                return False
-            return True
-
-        res=[]
-        for inp in dir.rglob('*.in'):
-            if not check_decode(inp): continue
-            outp=inp.parent.joinpath(inp.stem+'.out')
-            if save_output:
-                if not outp.exists(): outp.touch()
-                res.append(inp)
-            elif check_exist:
-                if outp.exists() and check_decode(outp): res.append(inp)
-            else:
-                res.append(inp)
-        return res
-
     def run(self,cmd:list,dir:Path,save_output:bool) -> tuple[int,int,float]:
+        log.info('Running...')
         runner=Runner(self.tle)
-        data=self.get_testcases(dir,save_output,False)
+        data=FileCtrl.getTestcases(dir,save_output)
         ok,tot,slowest=0,len(data),0
-        for inp in data:
-            outp=inp.parent.joinpath(inp.stem+'.out')
-            good,time_used=runner.run(cmd,inp,outp if save_output else Path(os.devnull))
-            if not good: continue
-            log.info(
-                '%(input)s %(verdict)s, Executed in %(time)s ms'% {
-                    'input':inp.name,
-                    'verdict':ansi.green('Finished'),
-                    'time':ansi.green(str(int(time_used*1000)))
-                }
+        for inp,outp in data:
+            res=runner.run(
+                cmd,inp,outp if save_output else Path(os.devnull)
             )
-            ok+=1
-            slowest=max(slowest,time_used)
-        return ok,tot,slowest
-
-    def judge(self,cmd:list,outp:Path,dir:Path) -> tuple[int,int,float]:
-        runner=Runner(self.tle)
-        judger=Judger()
-        data=self.get_testcases(dir,False,True)
-        ok,tot,slowest=0,len(data),0
-        for inp in data:
-            good,time_used=runner.run(cmd,inp,outp)
-            if not good: continue
-            ansp=inp.parent.joinpath(inp.stem+'.out')
-
-            ac,line,ans,out=judger.compare(ansp,outp)
-            if ac:
-                log.info(
-                    '%(input)s %(verdict)s, Executed in %(time)s ms'% {
-                        'input':inp.name,
-                        'verdict':ansi.green('Accepted'),
-                        'time':ansi.green(str(int(time_used*1000)))
-                    }
-                )
+            if res.verdict != Verdict.FINISHED:
+                log.warning(inp.name+' '+res.format())
             else:
-                log.warning(
-                    '%(input)s %(verdict)s on line %(line)s: "%(ans)s" <-> "%(out)s", Executed in %(time)s ms'% {
-                        'input':inp.name,
-                        'verdict':ansi.red('Wrong Answer'),
-                        'line':ansi.red(str(line)),
-                        'ans':ansi.green(ans),
-                        'out':ansi.red(out),
-                        'time':ansi.red(str(int(time_used*1000)))
-                    }
-                )
-            ok+=ac
-            slowest=max(slowest,time_used)
-        return ok,tot,slowest
+                log.info(inp.name+' '+res.format())
+                ok+=1
+                slowest=max(slowest,res.time_used)
 
-    def hack(self,test:list,std:list,gen:list,inp:Path,ansp:Path,outp:Path) -> bool:
-        cnt=0
-        runner=Runner(self.tle)
+        log.info('')
+        log.info('Passed '+str(ok)+' / '+str(tot))
+        log.info('Slowest: '+ansi.green(str(int(slowest*1000)))+' ms')
+
+    def judge(self,dir:Path,test:list,spj:list=None) -> None:
+        log.info('Running...')
         judger=Judger()
-        slash=['/','-','\\','|']
-        while True:
-            cnt+=1
-            print('[ %(x)s ] Hacking on testcase #%(y)s...'
-                  %{'x':slash[cnt%len(slash)],'y':str(cnt)},end='\r')
-            if not runner.run(gen,Path(os.devnull),inp)[0]: return False
-            if not runner.run(std,inp,ansp)[0]: return False
-            if not runner.run(test,inp,outp)[0]: return True
-            ac,line,ans,out=judger.compare(ansp,outp)
-            if not ac:
-                log.warning(
-                    '%(verdict)s on line %(line)s: "%(ans)s" <-> "%(out)s"'% {
-                        'verdict':ansi.red('Wrong Answer'),
-                        'line':ansi.red(str(line)),
-                        'ans':ansi.green(ans),
-                        'out':ansi.red(out),
-                    }
-                )
-                return True
+        runner=Runner(self.tle)
+        outp=FileCtrl.workPath('test.out')
+        data=FileCtrl.getTestcases(dir,False)
+        ok,tot,slowest=0,len(data),0
+        
+        for inp,ansp in data:
+            res=runner.run(test,inp,outp)
+            if not res.good():
+                log.warning(inp.name+' '+res.format())
+                continue
+
+            if not spj:
+                if ansp:
+                    tmp=judger.compare(ansp,outp)
+                    res=Result(tmp.verdict,tmp.message,res.time_used,res.memory_used)
+            else:
+                res=judger.specialJudge(spj,inp,outp)
+
+            if res.good():
+                ok+=1
+                log.info(inp.name+' '+res.format())
+            elif spj and res.verdict != Verdict.WRONG_ANSWER:
+                log.warning(inp.name+' '+ansi.bold_red('Special Judge Error:')+' '+res.format())
+            else:
+                log.warning(inp.name+' '+res.format())
+            
+            slowest=max(slowest,res.time_used)
+        
+        log.info('')
+        log.info('Passed '+str(ok)+' / '+str(tot))
+        log.info('Slowest: '+ansi.green(str(int(slowest*1000)))+' ms')
+
+    def hack(self,dir:Path,test:list,gen:list,std:list=None,spj:list=None) -> bool:
+        inp = FileCtrl.workPath('hack.in')
+        ansp = FileCtrl.workPath('hack.out')
+        outp = FileCtrl.workPath('test.out')
+
+        class Status:
+            cnt = 0
+            gen_err = False
+            std_err = False
+            spj_err = False
+            res = Result(Verdict.FINISHED)
+
+        def hack_impl(st:Status) -> None:
+            runner=Runner(self.tle)
+            judger=Judger()
+            while True:
+                st.cnt+=1
+                
+                st.res=runner.run(gen,Path(os.devnull),inp)
+                if not st.res.good(): 
+                    st.gen_err=True
+                    return
+                
+                st.res=runner.run(test,inp,outp)
+                if not st.res.good(): return
+                
+                if std:
+                    st.res=runner.run(std,inp,ansp)
+                    if not st.res.good():
+                        st.std_err=True
+                        return
+
+                    tmp=judger.compare(ansp,outp)
+                    if not tmp.good():
+                        st.res=Result(
+                            tmp.verdict,tmp.message,st.res.time_used,st.res.memory_used
+                        )
+                        return
+                else:
+                    st.res=judger.specialJudge(spj,inp,outp)
+                    if not st.res.good():
+                        if st.res.verdict != Verdict.WRONG_ANSWER:
+                            st.spj_err=True
+                        return
+
+        st=Status()
+        hackt=threading.Thread(target=hack_impl,args=[st],daemon=True)
+        hackt.start()
+
+        def get(x:int):
+            if x==0: return "[    ] "
+            if x==1: return "[>   ] "
+            if x==2: return "[>>  ] "
+            if x==3: return "[>>> ] "
+            if x==4: return "[ >>>] "
+            if x==5: return "[  >>] "
+            if x==6: return "[   >] "
+
+        for i in itertools.count():
+            x=(i+1)%700
+            time.sleep(0.001)
+            if not hackt.is_alive(): break
+            print(get(x//100)+"hacking on testcase #"+str(st.cnt)+"...",end='\r')
+
+        if st.gen_err:
+            log.warning(ansi.bold_red('Generator Error:' + ' ' + st.res.format()))
+        elif st.std_err:
+            log.warning(ansi.bold_red('Standard Solution Error:' + ' ' + st.res.format()))
+        elif st.spj_err:
+            log.warning(ansi.bold_red('Special Judge Error:' + ' ' + st.res.format()))
+        else:
+            log.info(st.res.format())
+        
+        log.info('')
+        if st.gen_err or st.std_err or st.spj_err:
+            log.info(ansi.bold_red('Hacking Failed'))
+        else:
+            log.info(ansi.green('Hacking Success'))
+            id=FileCtrl.findAvailableId(dir,'hack_','.in')
+            if std: id=max(id,FileCtrl.findAvailableId(dir,'hack_','.out'))
+
+            in_target=dir.joinpath('hack_%d.in'%id)
+            FileCtrl.copyFile(inp,in_target)
+            log.info('testcase has been saved to:')
+            log.info('file://'+str(in_target.absolute()))
+
+            if std:
+                out_target=dir.joinpath('hack_%d.out'%id)
+                FileCtrl.copyFile(ansp,out_target)
+                log.info('file://'+str(out_target.absolute()))
+            log.info('')
+
 
     def __init__(self,tle:float) -> None:
         self.tle=tle
 
 
 def main():
-    parser=argparse.ArgumentParser(
-        prog='pyjudge',
-        description='A simple competitive programming judger',
-        epilog='examples: https://github.com/HEltim7/cplib/blob/master/Tools/pyjudge.md'
-    )
-    parser.add_argument('-v','--version',action='version',version='%(prog)s 1.0.3 by HEltim7')
-    parser.add_argument('--debug',help='enable debugging',action='store_true')
-    subparsers=parser.add_subparsers(dest='subparser',help='action')
-
-    judge_parser=subparsers.add_parser('judge',help='run and judge code by given testcases')
-    judge_parser.add_argument('filename',help='the Code to judge')
-    judge_parser.add_argument('-t','--tle',type=float,default=1,help='time limit per testcase, default is 1 second')
-    judge_parser.add_argument('-d','--dir',default='data',help='the dirctory of testcases, default is "data"')
-
-    run_parser=subparsers.add_parser('run',help='run code and save output')
-    run_parser.add_argument('filename',help='the code to run')
-    run_parser.add_argument('-s','--save',action='store_true',help='save output as .out file')
-    run_parser.add_argument('-t','--tle',type=float,default=1,help='time limit per testcase, default is 1 second')
-    run_parser.add_argument('-d','--dir',default='data',help='the dirctory of testcases, default is "data"')
-
-    hack_parser=subparsers.add_parser('hack',help='brute-force search for a hack testcase')
-    hack_parser.add_argument('filename',help='the code to hack')
-    hack_parser.add_argument('-s','--std',help='standard solution code',required=True)
-    hack_parser.add_argument('-g','--gen',help='testcase generator',required=True)
-    hack_parser.add_argument('-t','--tle',type=float,default=1,help='time limit per testcase, default is 1 second')
-    hack_parser.add_argument('-d','--dir',default='data',help='the dirctory of testcases, default is "data"')
-
-    args=parser.parse_args()
-    action=args.subparser
-    tester=Tester(args.tle)
-    global _DEBUG
-    _DEBUG=args.debug
-
     handler=logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(CustomFormatter())
     log.setLevel(logging.INFO)
     log.addHandler(handler)
 
-    cpp_compile_flags=['-std=c++20','-O2','-DONLINE_JUDGE']
-    cpp_compiler=['g++']
-    c_compile_flags=['-std=c11','-O2','-DONLINE_JUDGE']
-    c_compiler=['gcc']
-    python_interpreter=['python']
+    parser=argparse.ArgumentParser(
+        prog='pyjudge',
+        description='A simple competitive programming judger',
+        epilog='examples: https://github.com/HEltim7/cplib/blob/master/Tools/pyjudge.md'
+    )
+    parser.add_argument('-v','--version',action='version',version='%(prog)s 1.0.4-beta by HEltim7')
+    parser.add_argument('--debug',help='enable debugging',action='store_true')
+    parser.add_argument('--hide-stderr',action='store_false',help='suppress printing stderr')
+    parser.add_argument('--cpp-compiler',help='specify the compiler for C++')
+    parser.add_argument('--cpp-flags',help='compile flags for C++')
+    parser.add_argument('--py-interpreter',help='specify the interpreter for Python')
+    parser.add_argument('--py-flags',help='interpreter flags for Python')
+    subparsers=parser.add_subparsers(dest='subparser',help='action')
 
-    work_dir=tempfile.TemporaryDirectory(prefix='pyjudge_')
+    judge_parser=subparsers.add_parser('judge',help='run and judge code by given testcases')
+    judge_parser.add_argument('filename',type=Path,help='the Code to judge')
+    judge_parser.add_argument('-t','--tle',type=float,default=1,help='time limit per testcase, default is 1 second')
+    judge_parser.add_argument('-d','--dir',type=Path,default='data',help='the dirctory of testcases, default is "./data"')
+    judge_parser.add_argument('--spj',type=Path,help='enable special judge')
 
-    def work_path(file:str) -> Path:
-        return Path(work_dir.name).joinpath(file)
+    run_parser=subparsers.add_parser('run',help='run code and save output')
+    run_parser.add_argument('filename',type=Path,help='the code to run')
+    run_parser.add_argument('-t','--tle',type=float,default=1,help='time limit per testcase, default is 1 second')
+    run_parser.add_argument('-d','--dir',type=Path,default='data',help='the dirctory of testcases, default is "./data"')
+    run_parser.add_argument('-s','--save',action='store_true',help='save output as .out file')
 
-    def get_exe(file:str,bin_name:str) -> list:
-        filep=Path(file)
-        if filep.suffix in ['.cpp','.cc','.cxx','.c++','.cplusplus','.c']:
-            exe=work_path(bin_name)
-            log.info('Compiling '+file+'...')
-            try:
-                if filep.suffix not in ['.c']:
-                    subprocess.run(cpp_compiler+cpp_compile_flags+[file,'-o',exe],check=True)
-                else:
-                    subprocess.run(c_compiler+c_compile_flags+[file,'-o',exe],check=True)
-            except subprocess.CalledProcessError as err:
-                log.error(ansi.bold_red('Compile Error'))
-                return []
-            return [exe]
-        elif filep.suffix in ['.py']:
-            return python_interpreter+[filep]
-        else:
-            log.error(ansi.bold_red('Unknown File Type'))
-        return []
+    hack_parser=subparsers.add_parser('hack',help='brute-force search for a hack testcase')
+    hack_parser.add_argument('filename',type=Path,help='the code to hack')
+    hack_parser.add_argument('-t','--tle',type=float,default=1,help='time limit per testcase, default is 1 second')
+    hack_parser.add_argument('-d','--dir',type=Path,default='data',help='the dirctory of testcases, default is "./data"')
+    hack_parser.add_argument('-g','--gen',type=Path,help='testcase generator',required=True)
+    exgroup=hack_parser.add_mutually_exclusive_group(required=True)
+    exgroup.add_argument('-s','--std',type=Path,help='standard solution code')
+    exgroup.add_argument('--spj',type=Path,help='special judge code')
 
-    if action=='judge':
-        cmd=get_exe(args.filename,'test.bin')
-        if cmd==[]: return
+    args=parser.parse_args()
+    action=args.subparser
+    tester=Tester(args.tle)
+    compiler = Compiler()
 
-        log.info('Running...')
-        outp=work_path('test.out')
-        accepted,total,slowest=tester.judge(cmd,outp,Path(args.dir))
+    global PYJUDGE_DEBUG
+    PYJUDGE_DEBUG=args.debug
+    global PYJUDGE_SHOW_STDERR
+    PYJUDGE_SHOW_STDERR=args.hide_stderr
 
-        log.info('')
-        log.info('Accepted '+str(accepted)+' / '+str(total))
-        log.info('Slowest: '+ansi.green(str(int(slowest*1000)))+' ms')
+    def prepare(file:Path,name:str) -> list:
+        if not file.exists():
+            log.error(file.name + ' ' + Verdict.NO_SUCH_FILE_OR_DIRECTORY.format())
+            return
+        if compiler.compileable(file):
+            log.info('Compiling '+file.name+'...')
+        res,exe=compiler.process(file,name)
+        if not res.good():
+            log.error(file.name + ' ' + res.format())
+        else: return exe
+
+    if action == 'judge':
+        test = prepare(args.filename, 'test.bin')
+        spj = None
+        if not test: return
+        if args.spj:
+            spj = prepare(args.spj, 'spj.bin')
+            if not spj: return
+        tester.judge(args.dir, test, spj)
+
     elif action=='run':
-        cmd=get_exe(args.filename,'test.bin')
-        if cmd==[]: return
-
-        log.info('Running...')
-        finished,total,slowest=tester.run(cmd,Path(args.dir),args.save)
-
-        log.info('')
-        log.info('Finished '+str(finished)+' / '+str(total))
-        log.info('Slowest: '+ansi.green(str(int(slowest*1000)))+' ms')
+        test=prepare(args.filename,'test.bin')
+        if not test: return
+        tester.run(test,args.dir,args.save)
     elif action=='hack':
-        test=get_exe(args.filename,'test.bin')
-        if test==[]: return
-        std=get_exe(args.std,'std.bin')
-        if std==[]: return
-        gen=get_exe(args.gen,'gen.bin')
-        if gen==[]: return
-        
-        inp=work_path('hack.in')
-        ansp=work_path('hack.out')
-        outp=work_path('test.out')
-        if tester.hack(test,std,gen,inp,ansp,outp):
-            dir=Path(args.dir)
-            if not dir.exists(): dir.mkdir()
-            for i in itertools.count():
-                hack_in=dir.joinpath('hack_'+str(i+1)+'.in')
-                hack_out=dir.joinpath(hack_in.stem+'.out')
-                if not hack_in.exists():
-                    shutil.copyfile(inp,hack_in)
-                    shutil.copyfile(ansp,hack_out)
-                    break
-            
-            log.info('')
-            log.info(ansi.green('Hacking success')+
-                     ', testcase has been saved to '+ansi.blue_underline(str(hack_in)))
-        else:
-            log.info('')
-            log.warning(ansi.red('Hacking failed'))
+        test=prepare(args.filename,'test.bin')
+        if not test: return
+        gen=prepare(args.gen,'gen.bin')
+        if not gen: return
 
-    work_dir.cleanup()
+        std,spj=None,None
+        if args.std:
+            std=prepare(args.std,'std.bin')
+            if not std: return
+        if args.spj:
+            spj=prepare(args.spj,'spj.bin')
+            if not spj: return
+        tester.hack(args.dir,test,gen,std,spj)
+
 
 if __name__ == '__main__':
     try:
         start=time.time()
         main()
+        FileCtrl.clearup()
         end=time.time()
     except KeyboardInterrupt:
         log.warning('KeyboardInterrupt')
     except Exception as err:
-        if _DEBUG: traceback.print_exc()
+        if PYJUDGE_DEBUG: traceback.print_exc()
         log.error(ansi.bold_red('Unknown Error')+' '+str(err))
         exit(1)
     else: log.info('Finished in %.3f s\n'%(end-start))
