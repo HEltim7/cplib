@@ -418,10 +418,10 @@ class Tester:
             if x==6: return "[   >] "
 
         for i in itertools.count():
-            x=(i+1)%700
-            time.sleep(0.001)
+            x=(i+1)%70
+            time.sleep(0.01)
             if not hackt.is_alive(): break
-            print(get(x//100)+"hacking on testcase #"+str(st.cnt)+"...",end='\r')
+            print(get(x//10)+"hacking on testcase #"+str(st.cnt)+"...",end='\r')
 
         if st.gen_err:
             log.warning(ansi.bold_red('Generator Error:' + ' ' + st.res.format()))
@@ -432,11 +432,14 @@ class Tester:
         else:
             log.info(st.res.format())
         
+        attempts=' after ' + ansi.blue(str(st.cnt)) + ' attempt'
+        if st.cnt > 1: attempts = attempts + 's'
+
         log.info('')
         if st.gen_err or st.std_err or st.spj_err:
-            log.info(ansi.bold_red('Hacking Failed'))
+            log.info(ansi.bold_red('Hacking Failed') + attempts)
         else:
-            log.info(ansi.green('Hacking Success'))
+            log.info(ansi.green('Hacking Success') + attempts)
             id=FileCtrl.findAvailableId(dir,'hack_','.in')
             if std: id=max(id,FileCtrl.findAvailableId(dir,'hack_','.out'))
 
