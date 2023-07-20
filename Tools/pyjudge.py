@@ -140,7 +140,7 @@ class FileCtrl:
 
     @staticmethod
     def findAvailableId(dir:Path,prefix:str,suffix:str) -> int:
-        if not dir.exists(): return 1
+        if not dir.exists(): dir.mkdir(parents=True)
         for i in itertools.count():
             if not dir.joinpath(prefix+str(i+1)+suffix).exists():
                 return i+1
@@ -468,7 +468,7 @@ def main():
         description='A simple competitive programming judger',
         epilog='examples: https://github.com/HEltim7/cplib/blob/master/Tools/pyjudge.md'
     )
-    parser.add_argument('-v','--version',action='version',version='%(prog)s 1.0.4-beta by HEltim7')
+    parser.add_argument('-v','--version',action='version',version='%(prog)s 1.0.4 by HEltim7')
     parser.add_argument('--debug',help='enable debugging',action='store_true')
     parser.add_argument('--hide-stderr',action='store_false',help='suppress printing stderr')
     parser.add_argument('--cpp-compiler',help='specify the compiler for C++')
