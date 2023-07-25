@@ -517,12 +517,12 @@ class Tester:
             in_target = dir.joinpath("hack_%d.in" % id)
             FileCtrl.copyFile(inp, in_target)
             log.info("testcase has been saved to:")
-            log.info(str(in_target.absolute()))
+            log.info(in_target.absolute().as_uri())
 
             if std:
                 out_target = dir.joinpath("hack_%d.out" % id)
                 FileCtrl.copyFile(ansp, out_target)
-                log.info(str(out_target.absolute()))
+                log.info(out_target.absolute().as_uri())
             log.info("")
 
     def __init__(self, tle: float) -> None:
