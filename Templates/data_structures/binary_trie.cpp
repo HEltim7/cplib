@@ -1,5 +1,5 @@
-template<typename I> struct BinaryTrie {
-    constexpr static int H=sizeof(I)*8-1;
+template<typename I,int H=sizeof(I)*8-1-is_signed<I>()>
+struct BinaryTrie {
     struct Node {
         int ch[2];
         int cnt;
@@ -37,6 +37,19 @@ template<typename I> struct BinaryTrie {
                 u=tr[u].ch[x];
             }
             else u=tr[u].ch[x^1];
+        }
+        return res;
+    }
+
+    I xor_min(int v) {
+        I res{};
+        for(int i=H,u=0;i>=0;i--) {
+            bool x=v>>i&1;
+            if(tr[tr[u].ch[x]].cnt) u=tr[u].ch[x];
+            else {
+                res|=1<<i;
+                u=tr[u].ch[x^1];
+            }
         }
         return res;
     }

@@ -4,7 +4,7 @@ template<typename T,int R,int C=R> struct Matrix {
     template<int Rr,int Cr> constexpr Matrix<T,R,Cr> 
     operator*(const Matrix<T,Rr,Cr> &r) const {
         static_assert(C==Rr,"");
-        array<array<T,Cr>,R> ans;
+        array<array<T,Cr>,R> ans{};
         for(int i=0;i<R;i++) {
             for(int k=0;k<C;k++) {
                 // if(v[i][k]==0) continue;
@@ -17,7 +17,7 @@ template<typename T,int R,int C=R> struct Matrix {
     }
 
     constexpr Matrix operator+(const Matrix &r) const {
-        array<array<T,C>,R> ans;
+        array<array<T,C>,R> ans{};
         for(int i=0;i<R;i++)
             for(int j=0;j<C;j++)
                 ans[i][j]=v[i][j]+r[i][j];
@@ -25,7 +25,7 @@ template<typename T,int R,int C=R> struct Matrix {
     }
 
     constexpr Matrix operator-(const Matrix &r) const {
-        array<array<T,C>,R> ans;
+        array<array<T,C>,R> ans{};
         for(int i=0;i<R;i++)
             for(int j=0;j<C;j++)
                 ans[i][j]=v[i][j]-r[i][j];

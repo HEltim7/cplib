@@ -1,5 +1,5 @@
-template
-<class Info,class Tag,int MAX_SIZE,bool CHECK_LINK=0,bool CHECK_CUT=0>
+template<class Info,class Tag,int MAX_SIZE,
+         bool CHECK_LINK = 0,bool CHECK_CUT = 0,bool ASSERT = 0>
 struct LinkCutTree {
     #define lch tr[u].ch[0]
     #define rch tr[u].ch[1]
@@ -26,10 +26,16 @@ struct LinkCutTree {
         tr[u].info.pushup(tr[lch].info,tr[rch].info);
     }
 
+    void pushrev(int u) {
+        tr[u].info.reverse();
+        swap(lch,rch);
+        tr[u].rev^=1;
+    }
+
     void pushdn(int u) {
         if(tr[u].rev) {
-            swap(lch,rch);
-            tr[lch].rev^=1,tr[rch].rev^=1;
+            if(lch) pushrev(lch);
+            if(rch) pushrev(rch);
             tr[u].rev=0;
         }
         if(lch) tr[lch].update(tr[u].tag);
@@ -64,7 +70,7 @@ struct LinkCutTree {
     void make_root(int u) {
         access(u);
         splay(u);
-        tr[u].rev^=1;
+        pushrev(u);
     }
 
     int split(int u,int v) {
@@ -89,14 +95,16 @@ struct LinkCutTree {
 
     bool link(int u,int v) {
         make_root(u);
-        if(CHECK_LINK&&find_root(v)==u) return 0;
+        if(CHECK_LINK&&find_root(v)==u)
+            return assert(!ASSERT),0;
         tr[u].p=v;
         return 1;
     }
 
     bool cut(int u,int v) {
         make_root(u);
-        if(CHECK_CUT&&!(find_root(v)==u&&rch==v&&!tr[v].ch[0])) return 0;
+        if(CHECK_CUT&&!(find_root(v)==u&&rch==v&&!tr[v].ch[0]))
+            return assert(!ASSERT),0;
         else access(v),splay(u);
         rch=tr[v].p=0;
         pushup(u);
@@ -148,6 +156,8 @@ struct Info {
     void update(const Tag &x) {
 
     }
+
+    void reverse() {}
 };
 
-LinkCutTree<Info,Tag,int(1e5)+10> lct;
+LinkCutTree<Info,Tag,N> lct;
