@@ -16,23 +16,26 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
 
 > 这个目录并不是完整的Templates内容~~而且我大概率会忘记更新~~。
 
-- data_structures 数据结构
-  - [树状数组](./Templates/data_structures/fenwick_tree.cpp)
+- ds 数据结构
+  - [树状数组](./Templates/ds/fenwick_tree.cpp)
   - 线段树
-    - [线段树](./Templates/data_structures/segment_tree.cpp)
-    - [线段树，仅单点修改](./Templates/data_structures/segment_tree_without_lazy_tag.cpp)
-    - [势能线段树](./Templates/data_structures/potential_segment_tree.cpp)
-    - [可持久化线段树](./Templates/data_structures/persistent_segment_tree.cpp)
-    - [线段树合并](./Templates/data_structures/merge_split_segment_tree.cpp)
+    - [线段树](./Templates/ds/segment_tree.cpp)
+    - [单点修改线段树](./Templates/ds/segment_tree_without_lazy_tag.cpp)
+    - [线段树树上二分1](./Templates/ds/binary_search_on_segment_tree.cpp)
+    - [线段树树上二分2](./Templates/ds/binary_search_on_segment_tree_prefix.cpp.cpp)
+    - [势能线段树](./Templates/ds/potential_segment_tree.cpp)
+    - [可持久化线段树](./Templates/ds/persistent_segment_tree.cpp)
+    - [线段树合并](./Templates/ds/merge_split_segment_tree.cpp)
   - 并查集
-    - [并查集](./Templates/data_structures/disjoint_union_set.cpp)
-    - [可撤销并查集](./Templates/data_structures/undoable_disjoint_union_set.cpp)
-  - [树链剖分](./Templates/data_structures/heavy_path_decomposition.cpp)
-  - [字典树](./Templates/data_structures/trie.cpp)
-  - [稀疏表](./Templates/data_structures/sparse_table.cpp)
-  - [Lick-Cut Tree](./Templates/data_structures/link_cut_tree.cpp)
-  - [珂朵莉树](./Templates/data_structures/chtholly_tree.cpp)
-  - [虚树](./Templates/data_structures/virtual_tree.cpp)
+    - [并查集](./Templates/ds/disjoint_union_set.cpp)
+    - [可撤销并查集](./Templates/ds/undoable_disjoint_union_set.cpp)
+  - [树链剖分](./Templates/ds/heavy_path_decomposition.cpp)
+  - [字典树](./Templates/ds/trie.cpp)
+  - [01字典树](./Templates/ds/binary_trie.cpp)
+  - [稀疏表](./Templates/ds/sparse_table.cpp)
+  - [Lick-Cut Tree](./Templates/ds/link_cut_tree.cpp)
+  - [珂朵莉树](./Templates/ds/chtholly_tree.cpp)
+  - [虚树](./Templates/ds/virtual_tree.cpp)
 - dp 动态规划
   - [斜率优化](./Templates/dp/convex_hull_trick.cpp)
 - graph 图论
