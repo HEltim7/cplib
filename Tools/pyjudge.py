@@ -15,6 +15,7 @@ from pathlib import Path
 
 PYJUDGE_DEBUG = False
 PYJUDGE_SHOW_STDERR = True
+PYJUDGE_RUNNER_SPECIAL_TLE = 60.0
 
 
 class Ansi:
@@ -28,32 +29,37 @@ class Ansi:
     color_reset = "\x1b[0m"
     color_blue_underline = "\x1b[34;4m"
 
-    def green(self, s):
-        return self.color_green + s + self.color_reset
+    @staticmethod
+    def green(s):
+        return Ansi.color_green + s + Ansi.color_reset
 
-    def blue(self, s):
-        return self.color_blue + s + self.color_reset
+    @staticmethod
+    def blue(s):
+        return Ansi.color_blue + s + Ansi.color_reset
 
-    def magenta(self, s):
-        return self.color_magenta + s + self.color_reset
+    @staticmethod
+    def magenta(s):
+        return Ansi.color_magenta + s + Ansi.color_reset
 
-    def grey(self, s):
-        return self.color_grey + s + self.color_reset
+    @staticmethod
+    def grey(s):
+        return Ansi.color_grey + s + Ansi.color_reset
 
-    def yellow(self, s):
-        return self.color_yellow + s + self.color_reset
+    @staticmethod
+    def yellow(s):
+        return Ansi.color_yellow + s + Ansi.color_reset
 
-    def red(self, s):
-        return self.color_red + s + self.color_reset
+    @staticmethod
+    def red(s):
+        return Ansi.color_red + s + Ansi.color_reset
 
-    def bold_red(self, s):
-        return self.color_bold_red + s + self.color_reset
+    @staticmethod
+    def bold_red(s):
+        return Ansi.color_bold_red + s + Ansi.color_reset
 
-    def blue_underline(self, s):
-        return self.color_blue_underline + s + self.color_reset
-
-
-ansi = Ansi()
+    @staticmethod
+    def blue_underline(s):
+        return Ansi.color_blue_underline + s + Ansi.color_reset
 
 
 class CustomFormatter(logging.Formatter):
@@ -61,11 +67,11 @@ class CustomFormatter(logging.Formatter):
         return "[" + color("%(levelname)s") + "] %(message)s"
 
     FORMATS = {
-        logging.DEBUG: get_fmt(ansi.grey),
-        logging.INFO: get_fmt(ansi.blue),
-        logging.WARNING: "[" + ansi.yellow("WARN") + "] %(message)s",
-        logging.ERROR: get_fmt(ansi.red),
-        logging.CRITICAL: get_fmt(ansi.bold_red),
+        logging.DEBUG: get_fmt(Ansi.grey),
+        logging.INFO: get_fmt(Ansi.blue),
+        logging.WARNING: "[" + Ansi.yellow("WARN") + "] %(message)s",
+        logging.ERROR: get_fmt(Ansi.red),
+        logging.CRITICAL: get_fmt(Ansi.bold_red),
     }
 
     def format(self, record):
@@ -94,28 +100,28 @@ class Verdict(Enum):
     def format(self) -> str:
         match self:
             case Verdict.ACCEPTED:
-                return ansi.green("Accepted")
+                return Ansi.green("Accepted")
             case Verdict.FINISHED:
-                return ansi.green("Finished")
+                return Ansi.green("Finished")
             case Verdict.WRONG_ANSWER:
-                return ansi.red("Wrong Answer")
+                return Ansi.red("Wrong Answer")
             case Verdict.RUNTIME_ERROR:
-                return ansi.magenta("Runtime Error")
+                return Ansi.magenta("Runtime Error")
             case Verdict.COMPILE_ERROR:
-                return ansi.bold_red("Compile Error")
+                return Ansi.bold_red("Compile Error")
             case Verdict.TIME_LIMIT_EXCEEDED:
-                return ansi.blue("Time Limit Exceeded")
+                return Ansi.blue("Time Limit Exceeded")
             case Verdict.MEMORY_LIMIT_EXCEEDED:
-                return ansi.blue("Memory Limit Exceeded")
+                return Ansi.blue("Memory Limit Exceeded")
 
             case Verdict.UNKONWN_FILE_TYPE:
-                return ansi.bold_red("Unkonwn File Type")
+                return Ansi.bold_red("Unkonwn File Type")
             case Verdict.UNKONWN_FILE_ENCODING:
-                return ansi.bold_red("Unkonwn File Encoding")
+                return Ansi.bold_red("Unkonwn File Encoding")
             case Verdict.NO_SUCH_FILE_OR_DIRECTORY:
-                return ansi.bold_red("No Such File Or Directory")
+                return Ansi.bold_red("No Such File Or Directory")
             case _:
-                return ansi.bold_red("Unkonwn Error")
+                return Ansi.bold_red("Unkonwn Error")
 
 
 class Result:
@@ -149,9 +155,9 @@ class Result:
             res += " " + self.message.replace("\n", " ")
         match self.verdict:
             case Verdict.ACCEPTED | Verdict.FINISHED:
-                res += " Executed in %s ms" % ansi.green(toMilli())
+                res += " Executed in %s ms" % Ansi.green(toMilli())
             case Verdict.WRONG_ANSWER:
-                res += " Executed in %s ms" % ansi.red(toMilli())
+                res += " Executed in %s ms" % Ansi.red(toMilli())
         return res
 
 
@@ -269,20 +275,23 @@ class Compiler:
 
 
 class Runner:
-    def run(self, cmd: list, inp: Path, outp: Path, spj: bool = False) -> Result:
+    def run(self, cmd: list, inp: Path, outp: Path, tle: float = None) -> Result:
         try:
             with inp.open() as f:
                 f.readline()
         except UnicodeDecodeError as err:
             return Result(Verdict.UNKONWN_FILE_ENCODING)
 
+        if tle == None:
+            tle = self.tle
         if outp and not outp.exists():
             outp.touch()
+
         try:
             start = time.time()
             subprocess.run(
                 cmd,
-                timeout=self.tle,
+                timeout=tle,
                 check=True,
                 stdin=inp.open("r"),
                 stdout=outp.open("w"),
@@ -292,20 +301,53 @@ class Runner:
             )
             end = time.time()
         except subprocess.CalledProcessError as err:
-            if spj and err.returncode == 1:
-                return Result(Verdict.WRONG_ANSWER, FileCtrl.fileToStr(outp))
             return Result(Verdict.RUNTIME_ERROR, str(err))
         except subprocess.TimeoutExpired as err:
-            return Result(Verdict.TIME_LIMIT_EXCEEDED, "", self.tle)
+            return Result(Verdict.TIME_LIMIT_EXCEEDED, "", tle)
         except Exception as err:
             print(str(err))
             return Result(Verdict.UNKONWN_ERROR, str(err))
         else:
-            if spj:
-                return Result(Verdict.ACCEPTED, FileCtrl.fileToStr(outp))
             return Result(Verdict.FINISHED, "", end - start)
 
     def specialRun(self, cmd: list, inp: Path, outp: Path) -> Result:
+        return self.run(cmd, inp, outp, max(self.tle, PYJUDGE_RUNNER_SPECIAL_TLE))
+
+    def specialJudgeRun(self, cmd: list, inp: Path, outp: Path) -> Result:
+        try:
+            with inp.open() as f:
+                f.readline()
+        except UnicodeDecodeError as err:
+            return Result(Verdict.UNKONWN_FILE_ENCODING)
+
+        tle = max(self.tle, PYJUDGE_RUNNER_SPECIAL_TLE)
+        if outp and not outp.exists():
+            outp.touch()
+
+        try:
+            start = time.time()
+            subprocess.run(
+                cmd,
+                timeout=tle,
+                check=True,
+                stdin=inp.open("r"),
+                stdout=outp.open("w"),
+                stderr=sys.stderr
+                if PYJUDGE_SHOW_STDERR
+                else Path(os.devnull).open("w"),
+            )
+            end = time.time()
+        except subprocess.CalledProcessError as err:
+            if err.returncode == 1:
+                return Result(Verdict.WRONG_ANSWER, FileCtrl.fileToStr(outp))
+            return Result(Verdict.RUNTIME_ERROR, str(err))
+        except subprocess.TimeoutExpired as err:
+            return Result(Verdict.TIME_LIMIT_EXCEEDED, "", tle)
+        except Exception as err:
+            print(str(err))
+            return Result(Verdict.UNKONWN_ERROR, str(err))
+        else:
+            return Result(Verdict.ACCEPTED, FileCtrl.fileToStr(outp))
         return self.run(cmd, inp, outp, True)
 
     def __init__(self, tle: float) -> None:
@@ -317,7 +359,7 @@ class Judger:
         return Result(
             Verdict.WRONG_ANSWER,
             'on line %(line)d: "%(ans)s" <-> "%(out)s"'
-            % {"line": line, "ans": ansi.green(ans), "out": ansi.red(out)},
+            % {"line": line, "ans": Ansi.green(ans), "out": Ansi.red(out)},
         )
 
     def compare(self, ansp: Path, outp: Path) -> Result:
@@ -341,7 +383,7 @@ class Judger:
 
     def specialJudge(self, spj: list, inp: Path, outp: Path) -> Result:
         in_out = FileCtrl.mergeFile(inp, outp, "in_out.txt")
-        res = Runner(60).specialRun(spj, in_out, FileCtrl.workPath("verdict.txt"))
+        res = Runner(60).specialJudgeRun(spj, in_out, FileCtrl.workPath("verdict.txt"))
         return res
 
     def __init__(self) -> None:
@@ -349,7 +391,7 @@ class Judger:
 
 
 class Tester:
-    def run(self, cmd: list, dir: Path, save_output: bool) -> tuple[int, int, float]:
+    def run(self, cmd: list, dir: Path, save_output: bool) -> None:
         log.info("Running...")
         runner = Runner(self.tle)
         data = FileCtrl.getTestcases(dir, save_output)
@@ -365,7 +407,7 @@ class Tester:
 
         log.info("")
         log.info("Passed " + str(ok) + " / " + str(tot))
-        log.info("Slowest: " + ansi.green(str(int(slowest * 1000))) + " ms")
+        log.info("Slowest: " + Ansi.green(str(int(slowest * 1000))) + " ms")
 
     def judge(self, dir: Path, test: list, spj: list = None) -> None:
         log.info("Running...")
@@ -397,7 +439,7 @@ class Tester:
                 log.warning(
                     inp.name
                     + " "
-                    + ansi.bold_red("Special Judge Error:")
+                    + Ansi.bold_red("Special Judge Error:")
                     + " "
                     + res.format()
                 )
@@ -408,11 +450,11 @@ class Tester:
 
         log.info("")
         log.info("Passed " + str(ok) + " / " + str(tot))
-        log.info("Slowest: " + ansi.green(str(int(slowest * 1000))) + " ms")
+        log.info("Slowest: " + Ansi.green(str(int(slowest * 1000))) + " ms")
 
     def hack(
         self, dir: Path, test: list, gen: list, std: list = None, spj: list = None
-    ) -> bool:
+    ) -> None:
         inp = FileCtrl.workPath("hack.in")
         ansp = FileCtrl.workPath("hack.out")
         outp = FileCtrl.workPath("test.out")
@@ -430,7 +472,7 @@ class Tester:
             while True:
                 st.cnt += 1
 
-                st.res = runner.run(gen, Path(os.devnull), inp)
+                st.res = runner.specialRun(gen, Path(os.devnull), inp)
                 if not st.res.good():
                     st.gen_err = True
                     return
@@ -440,7 +482,7 @@ class Tester:
                     return
 
                 if std:
-                    st.res = runner.run(std, inp, ansp)
+                    st.res = runner.specialRun(std, inp, ansp)
                     if not st.res.good():
                         st.std_err = True
                         return
@@ -491,25 +533,25 @@ class Tester:
             )
 
         if st.gen_err:
-            log.warning(ansi.bold_red("Generator Error:" + " " + st.res.format()))
+            log.warning(Ansi.bold_red("Generator Error:" + " " + st.res.format()))
         elif st.std_err:
             log.warning(
-                ansi.bold_red("Standard Solution Error:" + " " + st.res.format())
+                Ansi.bold_red("Standard Solution Error:" + " " + st.res.format())
             )
         elif st.spj_err:
-            log.warning(ansi.bold_red("Special Judge Error:" + " " + st.res.format()))
+            log.warning(Ansi.bold_red("Special Judge Error:" + " " + st.res.format()))
         else:
             log.info(st.res.format())
 
-        attempts = " after " + ansi.blue(str(st.cnt)) + " attempt"
+        attempts = " after " + Ansi.blue(str(st.cnt)) + " attempt"
         if st.cnt > 1:
             attempts = attempts + "s"
 
         log.info("")
         if st.gen_err or st.std_err or st.spj_err:
-            log.info(ansi.bold_red("Hacking Failed") + attempts)
+            log.info(Ansi.bold_red("Hacking Failed") + attempts)
         else:
-            log.info(ansi.green("Hacking Success") + attempts)
+            log.info(Ansi.green("Hacking Success") + attempts)
             id = FileCtrl.findAvailableId(dir, "hack_", ".in")
             if std:
                 id = max(id, FileCtrl.findAvailableId(dir, "hack_", ".out"))
@@ -542,7 +584,7 @@ def main():
         epilog="examples: https://github.com/HEltim7/cplib/blob/master/Tools/pyjudge.md",
     )
     parser.add_argument(
-        "-v", "--version", action="version", version="%(prog)s 1.0.4 by HEltim7"
+        "-v", "--version", action="version", version="%(prog)s 1.0.4-beta by HEltim7"
     )
     parser.add_argument("--debug", help="enable debugging", action="store_true")
     parser.add_argument(
@@ -688,7 +730,7 @@ if __name__ == "__main__":
     except Exception as err:
         if PYJUDGE_DEBUG:
             traceback.print_exc()
-        log.error(ansi.bold_red("Unknown Error") + " " + str(err))
+        log.error(Ansi.bold_red("Unknown Error") + " " + str(err))
         exit(1)
     else:
         log.info("Finished in %.3f s\n" % (end - start))
