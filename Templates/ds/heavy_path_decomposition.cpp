@@ -2,7 +2,7 @@
 namespace hpd {
     using PII=pair<int,int>;
     constexpr int N=1e5+10; // ***
-    int id[N],w[N],nw[N],cnt;
+    int id[N],w[N],ori[N],cnt;
     int dep[N],sz[N],top[N],p[N],hch[N];
     vector<int> adj[N];
 
@@ -17,7 +17,7 @@ namespace hpd {
     }
 
     void dfs2(int u,int t) {
-        id[u]=++cnt,nw[cnt]=w[u],top[u]=t;
+        id[u]=++cnt,ori[id[u]]=u,top[u]=t;
         if(!hch[u]) return;
         dfs2(hch[u],t);
         for(int v:adj[u])

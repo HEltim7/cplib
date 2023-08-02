@@ -262,7 +262,7 @@
             "        : add(add) {",
             "        resize(n);",
             "    }",
-            "};",
+            "};"
         ],
         "description": "FenwickTree",
         "prefix": "#fenwick"
@@ -272,8 +272,8 @@
             "// ! don't confuse dfn id with node id",
             "namespace hpd {",
             "    using PII=pair<int,int>;",
-            "    constexpr int N=${1:1e5+10}; // ***",
-            "    int id[N],w[N],nw[N],cnt;",
+            "    constexpr int N=1e5+10; // ***",
+            "    int id[N],w[N],ori[N],cnt;",
             "    int dep[N],sz[N],top[N],p[N],hch[N];",
             "    vector<int> adj[N];",
             "",
@@ -288,7 +288,7 @@
             "    }",
             "",
             "    void dfs2(int u,int t) {",
-            "        id[u]=++cnt,nw[cnt]=w[u],top[u]=t;",
+            "        id[u]=++cnt,ori[id[u]]=u,top[u]=t;",
             "        if(!hch[u]) return;",
             "        dfs2(hch[u],t);",
             "        for(int v:adj[u])",
@@ -328,7 +328,7 @@
             "        cnt=0;",
             "        fill(hch, hch+n+1, 0);",
             "    }",
-            "}"
+            "}",
         ],
         "description": [
             "将树上路径转化为不超过logn级别数量的线段 预处理复杂度 O(n) ",
@@ -2100,10 +2100,13 @@
             "            infaet[i]=infaet[i-1]/i;",
             "        }",
             "    }",
-            "} binom(N);",
+            "} binom(N);"
         ],
         "description": "递推求组合数 O(n)",
-        "prefix": ["#binom","#cmb"]
+        "prefix": [
+            "#binom",
+            "#cmb"
+        ]
     },
     "[Math] Euler's Sieve": {
         "body": [
@@ -2362,6 +2365,66 @@
         ],
         "description": "quick power O(logn)",
         "prefix": "#qpow"
+    },
+    "[Misc] SGT D&Q": {
+        "body": [
+            "namespace sd {",
+            "    #define lch (u<<1)",
+            "    #define rch (u<<1|1)",
+            "    using T=int;",
+            "    vector<vector<T>> seg;",
+            "    int rng_l,rng_r;",
+            "",
+            "    void add(int u,int x,int y,int l,int r,T val) {",
+            "        if(x>r||y<l) return;",
+            "        if(x<=l&&y>=r) seg[u].emplace_back(val);",
+            "        else {",
+            "            int mid=(l+r)/2;",
+            "            add(lch,x,y,l,mid,val);",
+            "            add(rch,x,y,mid+1,r,val);",
+            "        }",
+            "    }",
+            "    void add(int x,int y,T val) {",
+            "        add(1,x,y,rng_l,rng_r,val);",
+            "    }",
+            "",
+            "    void solve(int u,int l,int r) {",
+            "        // apply",
+            "        for(auto x:seg[u]) {",
+            "            ",
+            "        }",
+            "",
+            "        // update ans",
+            "        if(l==r) ;",
+            "        else {",
+            "            int mid=(l+r)/2;",
+            "            solve(lch,l,mid);",
+            "            solve(rch,mid+1,r);",
+            "        }",
+            "",
+            "        // undo",
+            "    }",
+            "    void solve() {",
+            "        solve(1,rng_l,rng_r);",
+            "    }",
+            "",
+            "    void init(int l,int r) {",
+            "        rng_l=l,rng_r=r;",
+            "        seg.clear();",
+            "        seg.resize(4<<__lg(r-l+1)|1);",
+            "    }",
+            "",
+            "    #undef lch",
+            "    #undef rch",
+            "}"
+        ],
+        "description": [
+            "线段树分治\n",
+            "能在至多增加一个log的代价下\n",
+            "将[增删]转化为[增+撤销]或[增+持久化]\n",
+            "问题必须可离线"
+        ],
+        "prefix": "#sgt_div"
     },
     "[Misc] CDQ's Divide and Conquer": {
         "body": [
