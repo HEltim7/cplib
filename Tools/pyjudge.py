@@ -477,14 +477,14 @@ class Tester:
                     st.gen_err = True
                     return
 
-                st.res = runner.run(test, inp, outp)
-                if not st.res.good():
-                    return
-
                 if std:
                     st.res = runner.specialRun(std, inp, ansp)
                     if not st.res.good():
                         st.std_err = True
+                        return
+                    
+                    st.res = runner.run(test, inp, outp)
+                    if not st.res.good():
                         return
 
                     tmp = judger.compare(ansp, outp)
@@ -497,6 +497,10 @@ class Tester:
                         )
                         return
                 else:
+                    st.res = runner.run(test, inp, outp)
+                    if not st.res.good():
+                        return
+
                     st.res = judger.specialJudge(spj, inp, outp)
                     if not st.res.good():
                         if st.res.verdict != Verdict.WRONG_ANSWER:
