@@ -1,8 +1,9 @@
 # 工具集
 
-- [快读](#快读)
-- [debug](#debug)
-- [数据生成与对拍](#数据生成与对拍)
+- [工具集](#工具集)
+  - [快读](#快读)
+  - [debug](#debug)
+  - [对拍](#对拍)
 
 ## 快读
 
@@ -193,18 +194,59 @@ namespace debug {
 #endif
 ```
 
-## 数据生成与对拍
+## 对拍
 
 简易数据生成器
 
 ```cpp
 mt19937 gen=mt19937(random_device{}());
+// or
+mt19937 gen=mt19937(chrono::system_clock().now().time_since_epoch().count());
 
 int rnd(int l,int r) {
     int len=r-l+1;
     LL val=gen()%len;
     return val+l;
 }
+```
+
+暴力对拍
+
+sh,bash,etc.
+
+```cpp
+void hack() {
+    auto fin=[&](string s) {
+        cerr<<"[hack] "<<s<<endl;
+        exit(0);
+    };
+
+    if(system("g++ gen.cpp -o gen -O2 -std=c++20")) fin("gen CE");
+    if(system("g++ std.cpp -o std -O2 -std=c++20")) fin("std CE");
+    if(system("g++ test.cpp -o test -O2 -std=c++20")) fin("test CE");
+
+    for(int i=1;;i++) {
+        cerr<<"[hack] #"<<i<<endl;
+        if(system("./gen > 1.in")) fin("gen RE");
+        if(system("./std < 1.in > 1.ans")) fin("std RE");
+        if(system("./test < 1.in > 1.out")) fin("test RE");
+
+        fstream x("1.out"),y("1.ans");
+        while(x&&y) {
+            string s,t;
+            x>>s,y>>t;
+            if(s!=t) fin("success!");
+        }
+    }
+}
+```
+
+powershell 替换这几行。
+
+```cpp
+if(system("./gen > 1.in")) fin("gen RE");
+if(system("Get-Content 1.in | ./std > 1.ans")) fin("std RE");
+if(system("Get-Content 1.in | ./test > 1.out")) fin("test RE");
 ```
 
 powershell 重定向标准输入输出
