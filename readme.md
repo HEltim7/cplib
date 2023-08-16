@@ -59,7 +59,7 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
 - string 字符串
   - [kmp](./Templates/string/kmp.cpp)
   - [z函数](./Templates/string/z_function.cpp)
-  - [最小表示法](./Templates/string/minimal_string.cpp)
+  - [最小表示法](./Templates/string/smallest_cyclic_shift.cpp)
   - [AC自动机](./Templates/string/aho_corasick_automaton.cpp)
   - [后缀数组](./Templates/string/suffix_array.cpp)
   - 后缀自动机

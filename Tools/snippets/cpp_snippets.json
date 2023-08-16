@@ -3510,7 +3510,7 @@
         "description": "",
         "prefix": "#kmp_alt_build"
     },
-    "[String] Minimal String": {
+    "[String] Smallest Cyclic Shift": {
         "body": [
             "string minimize(const string &s) {",
             "    int i=0,j=1,k=0,n=s.size();",
