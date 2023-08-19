@@ -118,7 +118,6 @@ struct Info {
         if(l!=r) return;
 
     }
-    void init(int l) { init(l,l); }
 
     friend Info operator+(const Info &l,const Info &r) {
         Info res;
