@@ -1,11 +1,10 @@
-# 工具集
+# $\text{Tools}$ 工具集
 
-- [工具集](#工具集)
-  - [快读](#快读)
-  - [debug](#debug)
-  - [对拍](#对拍)
+- [快读](#快读)
+- [debug](#debug)
+- [对拍](#对拍)
 
-## 快读
+# 快读
 
 仅整数读入。
 
@@ -143,7 +142,7 @@ namespace fast_io {
 } using fast_io::read,fast_io::write,fast_io::writef,fast_io::io;
 ```
 
-## debug
+# debug
 
 内存检查编译选项
 
@@ -194,7 +193,7 @@ namespace debug {
 #endif
 ```
 
-## 对拍
+# 对拍
 
 简易数据生成器
 
@@ -212,7 +211,7 @@ int rnd(int l,int r) {
 
 暴力对拍
 
-sh,bash,etc.
+sh 环境
 
 ```cpp
 void hack() {
@@ -241,12 +240,33 @@ void hack() {
 }
 ```
 
-powershell 替换这几行。
+cmd 环境
 
 ```cpp
-if(system("./gen > 1.in")) fin("gen RE");
-if(system("Get-Content 1.in | ./std > 1.ans")) fin("std RE");
-if(system("Get-Content 1.in | ./test > 1.out")) fin("test RE");
+void hack() {
+    auto fin=[&](string s) {
+        cerr<<"[hack] "<<s<<endl;
+        exit(0);
+    };
+
+    if(system("g++ gen.cpp -o gen -O2 -std=c++20")) fin("gen CE");
+    if(system("g++ std.cpp -o std -O2 -std=c++20")) fin("std CE");
+    if(system("g++ test.cpp -o test -O2 -std=c++20")) fin("test CE");
+
+    for(int i=1;;i++) {
+        cerr<<"[hack] #"<<i<<endl;
+        if(system(".\\gen > 1.in")) fin("gen RE");
+        if(system("type 1.in | .\\std > 1.ans")) fin("std RE");
+        if(system("type 1.in | .\\test > 1.out")) fin("test RE");
+
+        fstream x("1.out"),y("1.ans");
+        while(x&&y) {
+            string s,t;
+            x>>s,y>>t;
+            if(s!=t) fin("success!");
+        }
+    }
+}
 ```
 
 powershell 重定向标准输入输出
@@ -272,4 +292,10 @@ auto t0=clock.now();
 /* code */
 chrono::duration<double,milli> dur=clock.now()-t0;
 cout<<"Executed in "<<dur.count()<<" ms"<<endl;
+```
+
+使用 `clock()` 的一行式风格
+
+```cpp
+cerr << "Time elapsed: " << 1.0 * clock() / CLOCKS_PER_SEC << " s.\n";
 ```
