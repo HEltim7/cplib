@@ -3017,6 +3017,37 @@
         ],
         "prefix": "#sgt_div"
     },
+    "[Misc] Ternary Search": {
+        "body": [
+            "template<typename I,class F>",
+            "I ternary_search_min(I l,I r,F f) {",
+            "    while(l<r) {",
+            "        I lmid=l+(r-l)/2;",
+            "        I rmid=lmid+1;",
+            "        if(f(lmid)<f(rmid)) r=rmid-1;",
+            "        else l=lmid+1;",
+            "    }",
+            "    return l;",
+            "};",
+            "",
+            "template<typename I,class F>",
+            "I ternary_search_max(I l,I r,F f) {",
+            "    while(l<r) {",
+            "        I lmid=l+(r-l)/2;",
+            "        I rmid=lmid+1;",
+            "        if(f(lmid)<f(rmid)) l=lmid+1;",
+            "        else r=rmid-1;",
+            "    }",
+            "    return l;",
+            "};"
+        ],
+        "description": [
+            "整数三分\n",
+            "函数必须为单峰/单谷函数，允许存在多个最值点\n",
+            "但最值处的左/右侧必须严格单调"
+        ],
+        "prefix": "#ternary_search"
+    },
     "[String] Aho-Corasick Automaton": {
         "body": [
             "struct AhoCorasickAutomaton {",
@@ -3506,28 +3537,6 @@
         "description": "",
         "prefix": "#kmp_alt_build"
     },
-    "[String] Smallest Cyclic Shift": {
-        "body": [
-            "string minimize(const string &s) {",
-            "    int i=0,j=1,k=0,n=s.size();",
-            "    while(i<n&&j<n&&k<n) {",
-            "        if(s[(i+k)%n]==s[(j+k)%n]) k++;",
-            "        else {",
-            "            if(s[(i+k)%n]>s[(j+k)%n]) i=i+k+1;",
-            "            else j=j+k+1;",
-            "            if(i==j) i++;",
-            "            k=0;",
-            "        }",
-            "    }",
-            "    i=min(i,j);",
-            "    string res;",
-            "    for(int j=0;j<n;j++) res.push_back(s[(i+j)%n]);",
-            "    return res;",
-            "}"
-        ],
-        "description": "最小表示法",
-        "prefix": "#minimize"
-    },
     "[String] Palindrome Automaton": {
         "body": [
             "struct PalindromeAutomaton {",
@@ -3583,6 +3592,28 @@
         ],
         "description": "Palindrome Automaton",
         "prefix": "#pam"
+    },
+    "[String] Smallest Cyclic Shift": {
+        "body": [
+            "string minimize(const string &s) {",
+            "    int i=0,j=1,k=0,n=s.size();",
+            "    while(i<n&&j<n&&k<n) {",
+            "        if(s[(i+k)%n]==s[(j+k)%n]) k++;",
+            "        else {",
+            "            if(s[(i+k)%n]>s[(j+k)%n]) i=i+k+1;",
+            "            else j=j+k+1;",
+            "            if(i==j) i++;",
+            "            k=0;",
+            "        }",
+            "    }",
+            "    i=min(i,j);",
+            "    string res;",
+            "    for(int j=0;j<n;j++) res.push_back(s[(i+j)%n]);",
+            "    return res;",
+            "}"
+        ],
+        "description": "最小表示法",
+        "prefix": "#minimize"
     },
     "[String] Suffix Array": {
         "body": [

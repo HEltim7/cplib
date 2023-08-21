@@ -75,6 +75,7 @@ HEltim7的算法竞赛文档库，包括算法模板、笔记和各种工具。
     - [PAM](./Templates/string/palindrome_automaton.cpp)
     - [双端PAM](./Templates/string/double_end_palidrome_automaton.cpp)
 - misc 杂项
+  - [整数三分](./Templates/misc/ternary_search.cpp)
   - 分治
     - [cdq分治](./Templates/misc/cdq's_divide_and_conquer.cpp)
     - [点分治](./Templates/misc/centroid_decomposition.cpp)
