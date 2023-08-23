@@ -4,20 +4,57 @@
 
 几乎所有涉及到字符串子串的问题，都可以用后缀自动机解决。此外，后缀自动机还可以拓展到Trie上，解决多字符串的问题（广义后缀自动机）。
 
-<!-- ## 基本概念 -->
+# 问题集
 
-## 应用
-
-
-
-## 问题集
-
-### [NSUBSTR - Substrings](https://ac.nowcoder.com/acm/contest/37092/B)
+## [NSUBSTR - Substrings](https://ac.nowcoder.com/acm/contest/37092/B)
 
 模板题，建出SAM后，每个等价类对 `edp[edp[u].link].len+1` 到 `edp[u].len` 的区间进行值为 `edp[u].cnt` 区间修改，使用线段树维护即可。
 
-### [Typewriter](https://ac.nowcoder.com/acm/contest/37092/D)
+## [Typewriter](https://ac.nowcoder.com/acm/contest/37092/D)
 
 SAM优化dp。设 $maxlen[i]$ 表示满足 $s[1,x]$ 含有 $s[x+1,i]$ 的最大 $s[x+1,i]$ 长度。设 $left[i]$ 表示等价类 $i$ 在串中出现的最左位置，使用dp可以在线性时间内计算 $left$。$maxlen[i]$ 是可二分的，每次check时，定位子串在SAM上的位置，然后检查 $left$ 即可。计算 $maxlen$ 的复杂度便是 $n \log^2{n}$。
 
 求出 $maxlen$ 之后，直接dp转移即可，转移过程是贪心的，每次复制一段必定是复制越长越好。总的时间复杂度为 $n \log^2{n}$。
+
+## [2023 HDU多校 10-1010 Border Queries](https://vjudge.net/problem/HDU-7392)
+
+### 题意
+
+给定字符串 $S,T$，定义 $S$ 的一个划分是好的：
+
+- $s_1,s_2,s_3$ 均非空且 $s_1+s_2+s_3=s$
+- $s_1$ 是 $s_1+s_2$ 的 border
+- $s_3$ 是 $s_1+s_3$ 的 border
+
+对于一个串 $s$，若我们能找到这样的一个好划分满足 $s=s_2$，那么我们称这样的 $s$ 是好的。
+
+$q$ 次询问，每次询问 $T$ 的一段区间，问有多少个 $T[l...r]$ 的子串 $t$ 是好的。
+
+$|S|,|T|,q \le 10^6$
+
+### 思路
+
+串 $s$ 是好的，当且仅当：
+
+- $s$ 是 $S$ 的子串，且不是仅在前后缀中出现
+- 存在一个 $S$ 的 border $b$，满足 $|b|+|s|=|S|$
+
+考虑 $q=1$ 怎么做。
+
+设 $S'$ 为 $S[2...n-1]$，对 $S'$ 建 $\text{SAM}$，这样 $\text{SAM}$ 中的每个子串都满足条件1。然后预处理所有 $\text{border}$ 的长度，计算前缀和。
+
+然后使用 $\text{SAM}$ 求最长公共子串的方法计算答案。复杂度为线性。
+
+考虑如何处理询问。记合法串为 $S'$ 的子串。
+
+首先预处理出每个前缀的答案，那么 $ans[l,r]$ 就等于 $pre[r]-pre[l-1]$ 再减去跨越 $l$ 两侧的合法串带来的影响。但是发现跨越 $l$ 两侧的合法串数量很难统计，考虑转换思路。
+
+记以 $i$ 位置结尾的最长合法串左端点为 $left_i$，那么 $left_i$ 是随着 $i$ 单调不降的。因此对于询问的区间 $[l,r]$，我们可以二分出一个点 $i$，使得 $left[i,r]$ 均落在 $[l,r]$ 区间内，而 $left[l,i-1]$ 均落在 $l$ 左侧。
+
+- 对于 $[i,r]$，答案就是 $pre[r]-pre[i-1]$
+- 对于 $[l,i-1]$，发现这个区间内的所有子串均是合法串，预处理出 $all_i$ 表示长度为 $i$ 这种区间的答案。
+- 因此好串的数量就是 $pre[r]-pre[i-1]+all[i-l]$
+
+时间复杂度 $\mathcal{O}(n|\Sigma|+m+q \log m)$。
+
+实现：[评测记录](https://vjudge.net/solution/45015585)
