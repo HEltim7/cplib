@@ -28,6 +28,7 @@
     - [最小生成树](#最小生成树)
     - [最大生成树](#最大生成树)
   - [可撤销地维护MST](#可撤销地维护mst)
+  - [维护有根树](#维护有根树)
 - [珂朵莉树](#珂朵莉树)
 - [虚树](#虚树)
 
@@ -1525,6 +1526,52 @@ void dfs(int u,int l,int r) {
 ```
 
 复杂度 $\mathcal{O}(m \log m \log t)$。$t$ 为时间跨度。
+
+## 维护有根树
+
+有些时候，LCT维护的树并不是无根树，我们需要保证每次操作树的根都是不变的。一种简单有效的方法是使用无根树的方式维护有根树，即每次操作前记录一下根，操作完之后再 `make_root` 回去。
+
+不过直接维护有根树能减小因为额外的 `make_root` 带来的常数开销。当固定维护的根时显然不能再使用 `make_root` 函数（也没有必要）。随之而来的，我们需要修改调用了 `make_root` 的函数。
+
+首先是 `link` 和 `cut`。因为是有根树，所以 `cut` 直接cut掉 `u` 和父节点之间的边即可。
+
+```cpp
+void link(int u,int p) {
+    access(u);
+    splay(u);
+    tr[u].p=p;
+}
+
+void cut(int u) {
+    access(u);
+    splay(u);
+    lch=tr[lch].p=0;
+}
+```
+
+如果需要知道每个点在原树上的父节点，可以用一个数组维护，或者直接在LCT上查询（感觉不如前者）：
+
+```cpp
+int findfa(int u) {
+    access(u);
+    splay(u);
+    u=lch;
+    pushdn(u);
+    while(rch) u=rch,pushdn(u);
+    if(u) splay(u);
+    return u;
+}
+```
+
+然后是 `same`，判断一下根是否相同即可。
+
+```cpp
+bool same(int u,int v) {
+    return find_root(u)==find_root(v);
+}
+```
+
+`split` 则完全没有用了，因为根固定只能处理根到子节点的路径。
 
 # 珂朵莉树
 

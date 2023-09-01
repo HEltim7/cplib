@@ -9,6 +9,7 @@
     - [最小生成树](#最小生成树)
     - [最大生成树](#最大生成树)
   - [可撤销地维护MST](#可撤销地维护mst)
+  - [维护有根树](#维护有根树)
   - [维护树直径/重心](#维护树直径重心)
   - [维护割点割边](#维护割点割边)
 - [LCT 问题集](#lct-问题集)
@@ -66,6 +67,10 @@
     - [题意](#题意-12)
     - [思路](#思路-11)
     - [实现](#实现-12)
+  - [2022 ICPC 西安 A. Bridge](#2022-icpc-西安-a-bridge)
+    - [题意](#题意-13)
+    - [思路](#思路-12)
+    - [实现](#实现-13)
 
 
 在静态的树结构中，树剖是维护路径/子树修改的实用方法，但树剖无法处理动态的树结构。而LCT正是维护动态树结构的强大工具。LCT擅长维护树链信息，能很容易地实现路径修改+路径查询。
@@ -520,6 +525,52 @@ void dfs(int u,int l,int r) {
 ```
 
 复杂度 $\mathcal{O}(m \log m \log t)$。$t$ 为时间跨度。
+
+## 维护有根树
+
+有些时候，LCT维护的树并不是无根树，我们需要保证每次操作树的根都是不变的。一种简单有效的方法是使用无根树的方式维护有根树，即每次操作前记录一下根，操作完之后再 `make_root` 回去。
+
+不过直接维护有根树能减小因为额外的 `make_root` 带来的常数开销。当固定维护的根时显然不能再使用 `make_root` 函数（也没有必要）。随之而来的，我们需要修改调用了 `make_root` 的函数。
+
+首先是 `link` 和 `cut`。因为是有根树，所以 `cut` 直接cut掉 `u` 和父节点之间的边即可。
+
+```cpp
+void link(int u,int p) {
+    access(u);
+    splay(u);
+    tr[u].p=p;
+}
+
+void cut(int u) {
+    access(u);
+    splay(u);
+    lch=tr[lch].p=0;
+}
+```
+
+如果需要知道每个点在原树上的父节点，可以用一个数组维护，或者直接在LCT上查询（感觉不如前者）：
+
+```cpp
+int findfa(int u) {
+    access(u);
+    splay(u);
+    u=lch;
+    pushdn(u);
+    while(rch) u=rch,pushdn(u);
+    if(u) splay(u);
+    return u;
+}
+```
+
+然后是 `same`，判断一下根是否相同即可。
+
+```cpp
+bool same(int u,int v) {
+    return find_root(u)==find_root(v);
+}
+```
+
+`split` 则完全没有用了，因为根固定只能处理根到子节点的路径。
 
 ## 维护树直径/重心
 
@@ -1472,5 +1523,130 @@ else {
     // 算出可能比w的小的数量区间后，可行的k区间就是 [l+1,r+1]
     if(k>=l+1&&k<=r+1) io<<"YES"<<endl;
     else io<<"NO"<<endl;
+}
+```
+
+## [2022 ICPC 西安 A. Bridge](https://codeforces.com/gym/104077/problem/A)
+
+### 题意
+
+有 $n$ 个国家，每个国家有 $m+1$ 座城市，其中每个国家的 $i$ 城市有一条连向 $i+1$ 城市的单向道路 $(i \le m)$。
+
+$q$ 次操作，记 $(a,b)$ 为 $a$ 国家的 $b$ 城市：
+
+- 查询 $(a,1)$ 一直走到达的终点。
+- 修改 $(a,b)$
+  - 将 $(a,b)$ 的出边指向点修改为 $(a+1,b+1)$
+  - 将 $(a+1,b)$ 的出边指向点修改为 $(a,b)$
+  - 保证每个点的出边最多被修改一次
+
+$1 \le n,m,q \le 10^5$。
+
+### 思路
+
+因为每个点最多只有一条出边，那么原图实际上可以看作一个森林，查询的答案就是节点所在树（其实仔细思考可以发现应该是链）的根。
+
+修改操作实际上是将 $(x \rightarrow p_1),(y \rightarrow p_2)$ 改为 $(x \rightarrow p_2),(y \rightarrow p_1)$。即，交换 $(x,y)$ 的父节点。
+
+使用LCT维护这个过程，但是由于图中的均为有向边，即树是有根的，因此不能再使用LCT的 `make_root`，`link` 和 `cut` 也需要做相应的修改。或者还有一种更简单的替代方案，每次操作前记录一下根，操作完之后再 `make_root` 回去，这样可以等效地维护有根树。
+
+此外，原图中的点规模达到了 $\mathcal{O}(nm)$ 级别，不能直接维护，可以先将询问离线预处理出所有的有效点：
+
+- 所有的 $(a,m+1)$ 均为有效点
+- 修改操作的 $(a,b),(a+1,b)$ 也为有效点
+
+这样处理后，原图中的每个点被合并到了其右侧的第一个有效点。
+
+复杂度为 $\mathcal{O}(q \log (n+q))$。
+
+### 实现
+
+> [评测记录](https://codeforces.com/gym/104077/submission/221442564)
+
+LCT中修改的部分。由于树的根固定，因此不再需要 `make_root`，`cut` 也被重定义为切开 $u$ 和它的父节点。
+
+```cpp
+void link(int u,int p) {
+    access(u);
+    splay(u);
+    tr[u].p=p;
+}
+
+void cut(int u) {
+    access(u);
+    splay(u);
+    lch=tr[lch].p=0;
+}
+```
+
+使用 `std::map` 保存和查询关键点。
+
+```cpp
+void solve() {
+    int n,m,q;
+    cin>>n>>m>>q;
+    vector<tuple<int,int,int>> qry(q);
+    vector<pair<int,int>> bridge;
+
+    for(auto &[op,a,b]:qry) {
+        cin>>op>>a;
+        if(op==1) {
+            cin>>b;
+            bridge.emplace_back(a,b);
+            bridge.emplace_back(a+1,b);
+        }
+    }
+
+    map<pair<int,int>,int> mp;
+    for(int i=1;i<=n;i++) bridge.emplace_back(i,m+1);
+    sort(bridge.begin(),bridge.end());
+    for(int i=1;i<=bridge.size();i++) mp[bridge[i-1]]=i;
+
+    auto getid=[&](int a,int b) {
+        return mp.lower_bound({a,b})->second;
+    };
+
+    vector<int> p(bridge.size()+1);
+    for(auto [a,b]:bridge) {
+        if(b==m+1) continue;
+        int x=getid(a,b);
+        int y=getid(a,b+1);
+        lct.link(x, y);
+        p[x]=y;
+    }
+
+    for(auto [op,a,b]:qry) {
+        if(op==1) {
+            int x=getid(a,b);
+            int y=getid(a+1,b);
+            lct.cut(x);
+            lct.cut(y);
+            lct.link(x, p[y]);
+            lct.link(y, p[x]);
+            swap(p[x],p[y]);
+        }
+        else {
+            int id=lct.find_root(getid(a,1));
+            cout<<bridge[id-1].first<<endl;
+        }
+    }
+}
+```
+
+使用无根树的方式维护有根树。
+
+```cpp
+if(op==1) {
+    int x=getid(a,b);
+    int y=getid(a+1,b);
+    int rtx=lct.find_root(x);
+    int rty=lct.find_root(y);
+    lct.cut(x,p[x]);
+    lct.cut(y,p[y]);
+    lct.link(x,p[y]);
+    lct.link(y,p[x]);
+    swap(p[x],p[y]);
+    lct.make_root(rtx);
+    lct.make_root(rty);
 }
 ```
