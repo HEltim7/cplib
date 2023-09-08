@@ -29,8 +29,8 @@
     - [最大生成树](#最大生成树)
   - [可撤销地维护MST](#可撤销地维护mst)
   - [维护有根树](#维护有根树)
-- [珂朵莉树](#珂朵莉树)
 - [虚树](#虚树)
+- [Segment Set](#segment-set)
 
 # 树状数组
 
@@ -606,86 +606,106 @@ SegmentTree<Info, N> sgt;
 设区间大小为 $n$ ，分裂次数为 $m$ 。无论以何种顺序合并与分裂，时间复杂度均为 $\mathcal{O}((n+m)\log n)$，空间复杂度 $\mathcal{O}((n+m)\log n)$ （常数=1），如果在合并时保留子树结构，则需要多一倍的空间。
 
 ```cpp
-struct MergeSplitSegmentTree {
+namespace sgt {
+    #define lch (tr[u].lc)
+    #define rch (tr[u].rc)
 
-    #define lch tr[u].ch[0]
-    #define rch tr[u].ch[1]
-    constexpr static int MAX_SIZE=1e7+10;
-    
     struct Node {
-        int ch[2];
-        int cnt;
-    } tr[MAX_SIZE];
-    int idx;
+        int lc=0,rc=0;
+		int cnt=0;
+    };
+    constexpr int M=N*(__lg(N)+1)*2;
+    vector<Node> tr(M);
+    int idx,rng_l,rng_r;
 
     int new_node() {
-        // assert(idx<MAX_SIZE);
-        return ++idx;
+        assert(++idx<M);
+        tr[idx]={};
+        return idx;
     }
 
     void pushup(int u) {
-        if(lch&&rch) ;
-        else if(lch) ;
-        else if(rch) ;
+        tr[u].cnt=tr[lch].cnt+tr[rch].cnt;
     }
 
-    // remember to pushdn laze tag
+    void update(int u) {
+        if(!u) return;
+
+    }
+
     void pushdn(int u) {
-        if(lch) ;
-        if(rch) ;
 
     }
-    
-    void merge(int &u,int v) {
-        if(!u&&!v) return;
+
+    void merge(int &u,int v,int l,int r) {
         if(!u||!v) u=u|v;
-        else {
-            pushdn(u);pushdn(v);
-            merge(lch,tr[v].ch[0]);
-            merge(rch,tr[v].ch[1]);
-            pushup(u);
+        else if(l==r) {
+            tr[u].cnt+=tr[v].cnt;
         }
-    }
-
-    // k][k+1
-    void split(int &u,int &v,int l,int r,int k) {
-        if(!u||k>=r) return;
-        if(k<l) swap(u,v);
         else {
-            v=new_node();
-            int mid=l+r>>1;
-            if(k<=mid) swap(rch,tr[v].ch[1]);
             pushdn(u);
-            if(k<mid) split(lch, tr[v].ch[0], l, mid, k);
-            else split(rch, tr[v].ch[1], mid+1, r, k);
+            int mid=(l+r)/2;
+            merge(tr[u].lc, tr[v].lc, l, mid);
+            merge(tr[u].rc, tr[v].rc, mid+1, r);
             pushup(u),pushup(v);
         }
     }
+	void merge(int &u,int v) { merge(u,v,rng_l,rng_r); }
 
-    int kth(int u,int l,int r,int k) {
-        if(tr[u].cnt<k) return -1;
-        if(l==r) return l;
-        int mid=l+r>>1;
+    pair<int,int> split(int u,int l,int r,int p) {
+        if(r<p) return {u,0};
+        if(l>=p) return {0,u};
         pushdn(u);
-        if(tr[lch].cnt>=k) return kth(lch, l, mid, k);
-        return kth(rch, mid+1, r, k-tr[lch].cnt);
+        int v=new_node();
+        int mid=(l+r)/2;
+        auto [a,b]=split(lch, l, mid, p);
+        auto [c,d]=split(rch, mid+1, r, p);
+        tr[u].lc=a,tr[u].rc=c;
+        tr[v].lc=b,tr[v].rc=d;
+        pushup(u),pushup(v);
+        return {u,v};
     }
+	pair<int,int> split(int u,int p) { return split(u,rng_l,rng_r,p); }
 
-    void build(int &u,int l,int r,int p) {
-        u=new_node();
-        if(l==r) ;
+    int extract(int &u,int l,int r,int x,int y) {
+        auto [a,b]=split(u, l, r, x);
+        auto [c,d]=split(b, l, r, y+1);
+        merge(a, d, l, r);
+        return u=a,c;
+    }
+	int extract(int &u,int l,int r) { return extract(u,rng_l,rng_r,l,r); }
+
+    int query(int u,int l,int r,int x,int y) {
+        if(!u||l>y||r<x) return {};
+        if(l>=x&&r<=y) {
+			return tr[u].cnt;
+		}
+        pushdn(u);
+        int mid=(l+r)/2;
+        return query(lch, l, mid, x, y)+query(rch, mid+1, r, x, y);
+    }
+	int query(int u,int l,int r) { return query(u,rng_l,rng_r,l,r); }
+
+    void modify(int &u,int l,int r,int p,int v) {
+        if(!u) u=new_node();
+        if(l==r) {
+            tr[u].cnt+=v;
+        }
         else {
-            int mid=l+r>>1;
-            if(p<=mid) build(lch,l,mid,p);
-            else build(rch,mid+1,r,p);
+            pushdn(u);
+            int mid=(l+r)/2;
+            if(p<=mid) modify(lch, l, mid, p, v);
+            else modify(rch, mid+1, r, p, v);
             pushup(u);
         }
     }
+	void modify(int &u,int p,int v) { modify(u,rng_l,rng_r,p,v); }
+
+	void init(int l,int r) { idx=0,rng_l=l,rng_r=r; }
 
     #undef lch
     #undef rch
-
-} sgt;
+}
 ```
 
 # 字典树
@@ -1573,39 +1593,6 @@ bool same(int u,int v) {
 
 `split` 则完全没有用了，因为根固定只能处理根到子节点的路径。
 
-# 珂朵莉树
-
-珂朵莉树通过暴力地合并$set$中信息相同的点来压缩时间复杂度，在保证数据随机的前提下，其时间复杂度为$\mathcal{O}(n \log^2n)$。
-
-```cpp
-struct ChthollyTree {
-    struct Node {
-        int l,r,v;
-        Node(int L,int R,int V) : l(L),r(R),v(V) {}
-        bool operator< (const Node &x) const {
-            return l<x.l;
-        }
-    };
-    set<Node> st;
-
-    auto split(int pos) {
-        auto it=st.lower_bound(Node(pos,pos,0));
-        if(it!=st.end()&&it->l==pos) return it;
-        it=prev(it);
-        auto [l,r,v]=*it;
-        st.erase(it);
-        st.insert(Node(l,pos-1,v));
-        return st.insert(Node(pos,r,v)).first;
-    }
-
-    void assign(int l,int r,int v) {
-        auto end=split(r+1),begin=split(l);
-        st.erase(begin,end);
-        st.insert(Node(l,r,v));
-    }
-} odt;
-```
-
 # 虚树
 
 能在 $\mathcal{O}(k \log n)$ 时间内提取树上的 $k$ 个关键点建成一棵新树,并且新树的点数不超过 $2k$。
@@ -1690,4 +1677,98 @@ namespace vt {
         for(int i=0;i<=n;i++) adj[i].clear();
     }
 }
+```
+
+# Segment Set
+
+线段集（珂朵莉树）。插入删除的均摊复杂度为 $\mathcal{O}(\log n)$。
+
+```cpp
+template<class Info=int,typename I=int> struct SegmentSet {
+	struct Seg {
+		I l;
+		mutable I r;
+		mutable Info v;
+		bool operator<(const Seg &x) const {
+			return l<x.l;
+		}
+		friend ostream &operator<<(ostream &os,const Seg &x) {
+            return os<<"["<<x.l<<"->"<<x.r<<"]";
+        }
+		Seg(I l,I r={},Info v={}): l(l),r(r),v(v) {}
+	};
+	set<Seg> st;
+	using Iter=typename set<Seg>::iterator;
+
+    // 找最左与[l,r]有交的线段
+	// 如果不存在返回[l,r]右侧的第一个线段
+	Iter first_inter(I l,I r) {
+		Iter it=--st.upper_bound({l});
+		if(it->r<l) it++;
+		return it;
+	}
+
+    // 找最右与[l,r]有交的线段
+	// 如果不存在返回[l,r]左侧的第一个线段
+	Iter last_inter(I l,I r) {
+		return --st.upper_bound({r});
+	}
+
+    // 找到包含p点的线段，分裂为 [l,p-1],[p,r]
+	// 返回[p,r]，如果没有线段包含p，返回end()
+	Iter split(I p) {
+		Iter it=st.lower_bound({p});
+		if(it->l==p) return it;
+		if((--it)->r<p) return st.end();
+		auto [l,r,v]=*it;
+		st.erase(it);
+		st.emplace(l,p-1,v);
+		return st.emplace(p,r,v).first;
+	}
+
+    // 将与it相接的同色线段拼接，返回拼接后的线段
+	Iter merge(Iter it) {
+		auto work=[&](Iter lit,Iter rit) {
+			if(lit->r+1==rit->l&&lit->v==rit->v) {
+				lit->r=rit->r;
+				st.erase(rit);
+				return true;
+			}
+			return false;
+		};
+		auto lit=prev(it),rit=next(it);
+		if(work(lit,it)) return work(lit,rit),lit;
+		return work(it,rit),it;
+	}
+
+    // 删去与[l,r]相交的部分
+	Iter erase(I l,I r) {
+		split(l),split(r+1);
+		auto lit=first_inter(l,r);
+		auto rit=++last_inter(l,r);
+		return st.erase(lit,rit);
+	}
+
+    // 插入线段[l,r]并删去与[l,r]相交的部分
+	Iter insert(I l,I r,Info v) {
+		erase(l,r);
+		return merge(st.emplace(l,r,v).first);
+	}
+
+    // 找到第一个没有被线段覆盖的位置
+	I first_uncovered() {
+		auto it=st.begin();
+		if(it->r+2<next(it)->l) return it->r+2;
+		else it=next(it);
+		for(;;) {
+			if(it->r+1<next(it)->l) return it->r+1;
+			else it=next(it);
+		}
+	}
+
+	SegmentSet(I l,I r) {
+		st.emplace(l-2,l-2);
+		st.emplace(r+2,r+2);
+	}
+};
 ```
