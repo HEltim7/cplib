@@ -1,8 +1,5 @@
-# 杂项算法
+# $\text{Misc}$ 杂项算法
 
-<!-- markdown.extension.toc.levels 应设置为 1..6 -->
-
-- [杂项算法](#杂项算法)
 - [莫队](#莫队)
   - [普通莫队](#普通莫队)
     - [trick](#trick)
@@ -26,6 +23,8 @@
   - [集合哈希](#集合哈希)
 - [DP 优化](#dp-优化)
   - [斜率优化dp](#斜率优化dp)
+- [整数三分](#整数三分)
+- [大整数乘法](#大整数乘法)
 
 # 莫队
 
@@ -871,5 +870,44 @@ LL dp(int n) {
         q.emplace_back(x,y);
     }
     return res;
+}
+```
+
+# 整数三分
+
+整数域下的三分，要求函数必须为单峰/单谷函数，允许存在多个最值点，但最值处的左/右侧必须严格单调。
+
+```cpp
+template<typename I,class F>
+I ternary_search_min(I l,I r,F f) {
+    while(l<r) {
+        I lmid=l+(r-l)/2;
+        I rmid=lmid+1;
+        if(f(lmid)<f(rmid)) r=rmid-1;
+        else l=lmid+1;
+    }
+    return l;
+};
+
+template<typename I,class F>
+I ternary_search_max(I l,I r,F f) {
+    while(l<r) {
+        I lmid=l+(r-l)/2;
+        I rmid=lmid+1;
+        if(f(lmid)<f(rmid)) l=lmid+1;
+        else r=rmid-1;
+    }
+    return l;
+};
+```
+
+# 大整数乘法
+
+利用 `long double` 代替 `__int128` 实现模意义下的大整数乘法。
+
+```cpp
+LL binmul(LL a, LL b, LL m) {
+    LL c = (LL)a * b - (LL)((long double) a / m * b + 0.5L) * m;
+    return c < 0 ? c + m : c;
 }
 ```

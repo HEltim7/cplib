@@ -2,6 +2,9 @@
 
 - [树状数组](#树状数组)
   - [树状数组](#树状数组-1)
+  - [二维树状数组](#二维树状数组)
+  - [维护区间加区间和](#维护区间加区间和)
+  - [维护矩阵加矩阵和](#维护矩阵加矩阵和)
   - [树状数组上二分](#树状数组上二分)
 - [线段树](#线段树)
   - [线段树](#线段树-1)
@@ -10,6 +13,8 @@
   - [可持久化线段树](#可持久化线段树)
   - [势能线段树](#势能线段树)
   - [线段树合并/分裂](#线段树合并分裂)
+    - [按X维分裂维护Y维信息的线段树](#按x维分裂维护y维信息的线段树)
+  - [线段树分治](#线段树分治)
 - [字典树](#字典树)
   - [字典树](#字典树-1)
   - [01-字典树](#01-字典树)
@@ -43,7 +48,7 @@
 ```cpp
 template<typename T=int,T init=T()> struct Fenwick {
     using F=function<void(T&,const T&)>;
-    F add;
+    F add,sub;
     vector<T> tr;
 
     int lowbit(int x) { return x&(-x); }
@@ -60,18 +65,134 @@ template<typename T=int,T init=T()> struct Fenwick {
     }
 
     T query(int pos) {
-        if(++pos<0) return {};
+        if(++pos<0) return init;
         T res=init;
         while(pos) add(res,tr[pos]),pos-=lowbit(pos);
         return res;
     }
     
+    T range_query(int l,int r) {
+        T res=query(r);
+        sub(res,query(l-1));
+        return res;
+    }
+
     explicit Fenwick(
-        int n,F add=[](T &x,const T &y) { x += y; })
-        : add(add) {
+        int n,
+        F add=[](T &x,const T &y) { x+=y; },
+        F sub=[](T &x,const T &y) { x-=y; })
+        : add(add),sub(sub) {
         resize(n);
     }
 };
+```
+
+## 二维树状数组
+
+```cpp
+template<typename T=int,T init=T()> struct Fenwick2D {
+    using F=function<void(T&,const T&)>;
+    F add,sub;
+    vector<vector<T>> tr;
+
+    int lowbit(int x) { return x&(-x); }
+    void resize(int r,int c) { tr.resize(r+2,vector<T>(c+2,init)); }
+
+    void modify(int r,int c,T val) {
+        if(++r<=0||++c<=0) return;
+        for(int i=r;i<tr.size();i+=lowbit(i))
+            for(int j=c;j<tr[i].size();j+=lowbit(j))
+                add(tr[i][j],val);
+    }
+
+    void reset(int r,int c) {
+        if(++r<=0||++c<=0) return;
+        for(int i=r;i<tr.size();i+=lowbit(i))
+            for(int j=c;j<tr[i].size();j+=lowbit(j))
+                tr[i][j]=init;
+    }
+
+    T query(int r,int c) {
+        if(++r<0||++c<0) return init;
+        T res=init;
+        for(int i=r;i;i-=lowbit(i))
+            for(int j=c;j;j-=lowbit(j))
+                add(res,tr[i][j]);
+        return res;
+    }
+
+    T matrix_query(int r,int c,int x,int y) {
+        T res=query(x,y);
+        sub(res,query(x,c-1));
+        sub(res,query(r-1,y));
+        add(res,query(r-1,c-1));
+        return res;
+    }
+    
+    explicit Fenwick2D(
+        int r,int c,
+        F add=[](T &x,const T &y) { x+=y; },
+        F sub=[](T &x,const T &y) { x-=y; })
+        : add(add),sub(sub) {
+        resize(r,c);
+    }
+};
+```
+
+## 维护区间加区间和
+
+修改 `l,r`
+
+```cpp
+Fenwick<LL> dif(n),idif(n);
+
+dif.modify(l, x);
+dif.modify(r+1, -x);
+idif.modify(l, 1LL*l*x);
+idif.modify(r+1, -1LL*(r+1)*x);
+```
+
+查询 `l,r`
+
+```cpp
+auto get=[&](int x) {
+    return dif.query(x)*(x+1)-idif.query(x);
+};
+cout<<get(r)-get(l-1)<<endl;
+```
+
+## 维护矩阵加矩阵和
+
+修改 `a,b,c,d`
+
+```cpp
+Fenwick2D<LL> dif(n,m),idif(n,m),jdif(n,m),ijdif(n,m);
+
+auto modify=[&](int r,int c,LL x) {
+    dif.modify(r, c, x);
+    idif.modify(r, c, x*r);
+    jdif.modify(r, c, x*c);
+    ijdif.modify(r, c, x*r*c);
+};
+
+modify(a, b, x);
+modify(a, d+1, -x);
+modify(c+1, b, -x);
+modify(c+1, d+1, x);
+```
+
+查询 `a,b,c,d`
+
+```cpp
+auto get=[&](int r,int c) {
+    return 
+        (1LL*r*c+r+c+1)*dif.query(r, c)-
+        (r+1)*jdif.query(r, c)-
+        (c+1)*idif.query(r, c)+
+        ijdif.query(r, c);
+};
+
+cout<<get(c, d)-get(c, b-1)-get(a-1, d)+get(a-1, b-1)<<endl;
 ```
 
 ## 树状数组上二分
@@ -603,8 +724,6 @@ SegmentTree<Info, N> sgt;
 
 ## 线段树合并/分裂
 
-设区间大小为 $n$ ，分裂次数为 $m$ 。无论以何种顺序合并与分裂，时间复杂度均为 $\mathcal{O}((n+m)\log n)$，空间复杂度 $\mathcal{O}((n+m)\log n)$ （常数=1），如果在合并时保留子树结构，则需要多一倍的空间。
-
 ```cpp
 namespace sgt {
     #define lch (tr[u].lc)
@@ -702,6 +821,128 @@ namespace sgt {
 	void modify(int &u,int p,int v) { modify(u,rng_l,rng_r,p,v); }
 
 	void init(int l,int r) { idx=0,rng_l=l,rng_r=r; }
+
+    #undef lch
+    #undef rch
+}
+```
+
+线段树合并除了合并和分裂外，剩下的和动态开点线段树保持一致，因此也需要考虑线段树共有的问题：
+
+- 信息+信息
+- 信息初始化与信息+空信息
+- 信息+懒标记
+- 懒标记+懒标记
+- 懒标记清空
+
+线段树合并更需要考虑是如何在合并/分裂时维护信息的变化，这部分的问题就比一般的线段树灵活很多。
+
+合并子树需要考虑的：
+
+- 是否需要合并叶节点，合并叶子时的信息维护
+- 合并时是否需要新建节点来保留子树结构
+
+合并需要保留子树结构最常见于树上线段树合并，此时需要每次都新建节点，需要的空间也会翻倍。
+
+```cpp
+int merge(int x,int y) {
+    if(!x||!y) return x|y;
+    int u=new_node();
+    lch=merge(tr[x].lc,tr[y].lc);
+    rch=merge(tr[x].rc,tr[y].rc);
+    tr[u].cnt=tr[lch].cnt+tr[rch].cnt;
+    return u;
+}
+```
+
+考虑合并的复杂度，由于一棵树中的一个节点至多被合并一次，即一个节点的贡献至多为1，所以无论以何种顺序合并，复杂度都等于总节点数，为 $\mathcal{O}(n \log n)$。分裂为合并的逆过程，复杂度和合并保持一致。
+
+### 按X维分裂维护Y维信息的线段树
+
+考虑现在有一颗权值线段树，现在要把线段树按照区间的 $p$ 位置分裂。
+
+为了简化问题，不妨设原数组是一个排列。
+
+显然，我们是不能按照区间直接分裂一颗权值线段树的，因此我们需要在线段树上保存值在区间的最左位置 $minp$ 和最右位置 $maxp$。
+
+那么分裂当前节点 $u$ 时：
+
+- 如果 $[minp,maxp]$ 仅在 $p$ 的一侧，那么不需要分裂。
+- 否则递归地分裂左右子树，假设左子树分裂为了 $a,b$ 两棵树，右子树分裂为了 $c,d$ 两棵树，$u$ 分裂为 $u,v$，那么 $a,c$ 归到 $u$，$b,d$ 归到 $v$。
+
+```cpp
+pair<int,int> split(int u,int k) {
+    if(tr[u].minp>=k) return {0,u};
+    if(tr[u].maxp<k) return {u,0};
+    pushdn(u);
+    int v=new_node();
+    auto [a,b]=split(lch, k);
+    auto [c,d]=split(rch, k);
+    tr[u].lc=a,tr[u].rc=c;
+    tr[v].lc=b,tr[v].rc=d;
+    pushup(u),pushup(v);
+    return {u,v};
+}
+```
+
+同样的，我们可以按照权值分裂区间线段树。
+
+如果原数组不是一个排列，那么和上述做法的区别是需要分裂叶子节点，而排列递归到叶子一定不需要分裂。
+
+分裂叶子节点需要计算新的 $maxp,minp$，可以在 `std::set<pair<int,int>>` 上二分解决。不过这样总归还是比较麻烦，所以尽可能转化为排列来做。
+
+复杂度与一般的分裂一致，为 $\mathcal{O}(n \log n)$。
+
+## 线段树分治
+
+线段树分治可以将 “增+删” 转化为 “增+撤销/持久化”，代价是多一个log的复杂度，并且要求问题可离线。
+
+```cpp
+namespace sd {
+    #define lch (u<<1)
+    #define rch (u<<1|1)
+    using T=int;
+    vector<vector<T>> seg;
+    int rng_l,rng_r;
+
+    void add(int u,int x,int y,int l,int r,T val) {
+        if(x>r||y<l) return;
+        if(x<=l&&y>=r) seg[u].emplace_back(val);
+        else {
+            int mid=(l+r)/2;
+            add(lch,x,y,l,mid,val);
+            add(rch,x,y,mid+1,r,val);
+        }
+    }
+    void add(int x,int y,T val) {
+        add(1,x,y,rng_l,rng_r,val);
+    }
+
+    void solve(int u,int l,int r) {
+        // apply
+        for(auto x:seg[u]) {
+            
+        }
+
+        // update ans
+        if(l==r) ;
+        else {
+            int mid=(l+r)/2;
+            solve(lch,l,mid);
+            solve(rch,mid+1,r);
+        }
+
+        // undo
+    }
+    void solve() {
+        solve(1,rng_l,rng_r);
+    }
+
+    void init(int l,int r) {
+        rng_l=l,rng_r=r;
+        seg.clear();
+        seg.resize(4<<__lg(r-l+1)|1);
+    }
 
     #undef lch
     #undef rch
