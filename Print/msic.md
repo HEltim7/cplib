@@ -834,7 +834,54 @@ struct Hasher {
 
 为每个元素分配一个随机数，集合哈希就等于每个元素的xor。如果要哈希多重集，将xor改成+即可。
 
-# DP 优化
+# DP 模板
+
+## 换根dp
+
+```cpp
+namespace chrt {
+    // 初始化节点u
+    void init(int u) {
+
+    }
+
+    // 将子树u加入到子树p下
+    void link(int p,int u) {
+
+    }
+
+    // 将子树u从子树p中移除
+    void cut(int p,int u) {
+
+    }
+
+    void dfs1(int u,int fa) {
+        init(u);
+        for(int v:adj[u]) {
+            if(v!=fa) {
+                dfs1(v,u);
+                link(u,v);
+            }
+        }
+    }
+
+    void dfs2(int u,int fa) {
+        // TODO 更新答案
+        for(int v:adj[u]) {
+            if(v!=fa) {
+                cut(u,v),link(v,u);
+                dfs2(v,u);
+                cut(v,u),link(u,v);
+            }
+        }
+    }
+
+    void solve(int rt) {
+        dfs1(rt, -1);
+        dfs2(rt, -1);
+    }
+}
+```
 
 ## 斜率优化dp
 
