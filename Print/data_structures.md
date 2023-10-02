@@ -19,6 +19,9 @@
   - [字典树](#字典树-1)
   - [01-字典树](#01-字典树)
   - [可持久化01-字典树](#可持久化01-字典树)
+- [平衡树](#平衡树)
+  - [Treap](#treap)
+  - [笛卡尔树](#笛卡尔树)
 - [并查集](#并查集)
   - [并查集](#并查集-1)
   - [可撤销并查集](#可撤销并查集)
@@ -1135,6 +1138,282 @@ template<typename I> struct PersistentBinaryTrie {
 };
 ```
 
+# 平衡树
+
+## Treap
+
+FHQ-Treap。基于 `split` 和 `merge` 的无旋 Treap。
+
+```cpp
+// 使用 Treap 实现 multiset
+template<class Node> struct Treap {
+    #define lch (tr[u].ch[0])
+    #define rch (tr[u].ch[1])
+    using I=const Node&;
+    vector<Node> tr;
+    int root;
+
+    int new_node(I x) {
+        tr.emplace_back(x);
+        return tr.size()-1;
+    }
+
+    void pushup(int u) {
+        tr[u].pushup(tr[lch], tr[rch]);
+    }
+
+    void pushdn(int u) {
+        tr[lch].update(tr[u]);
+        tr[rch].update(tr[u]);
+        tr[u].clear_tag();
+    }
+
+    // le=1 按值将 Treap 分裂为 [~,key],[key+1,~] 两颗树
+    // le=0 按值将 Treap 分裂为 [~,key-1],[key,~] 两颗树
+    pair<int,int> split_by_key(int u,I key,bool le=true) {
+        if(!u) return {};
+        pushdn(u);
+        if(tr[u]<key||le&&!(key<tr[u])) {
+            auto [l,r]=split_by_key(rch, key, le);
+            rch=l;
+            pushup(u);
+            return {u,r};
+        }
+        else {
+            auto [l,r]=split_by_key(lch, key, le);
+            lch=r;
+            pushup(u);
+            return {l,u};
+        }
+    }
+
+    // 按值将 Treap 分裂为 [~,lkey-1],[lkey,rkey],[rkey+1,~] 三颗树
+    tuple<int,int,int> extract_by_key(int u,I lkey,I rkey) {
+        auto [t,r]=split_by_key(u, rkey);
+        auto [l,m]=split_by_key(t, lkey, false);
+        return {l,m,r};
+    }
+
+    // 按排名（size）将 Treap 分裂为 [1,rk],[rk+1,~] 两棵树
+    pair<int,int> split_by_rank(int u,int rk) {
+        if(!u) return {};
+        pushdn(u);
+        if(tr[lch].sz+1<=rk) {
+            auto [l,r]=split_by_rank(rch, rk-tr[lch].sz-1);
+            rch=l;
+            pushup(u);
+            return {u,r};
+        }
+        else {
+            auto [l,r]=split_by_rank(lch, rk);
+            lch=r;
+            pushup(u);
+            return {l,u};
+        }
+    }
+
+    // 按排名（size）将 Treap 分裂为 [1,lrk-1],[lrk,rrk],[rrk+1,n] 三棵树
+    tuple<int,int,int> extract_by_rank(int u,int lrk,int rrk) {
+        auto [t,r]=split_by_rank(u, rrk);
+        auto [l,m]=split_by_rank(t, lrk-1);
+        return {l,m,r};
+    }
+
+    // 按照 u.max(key) <= v.min(key) 合并 u,v 两棵树
+    int merge(int u,int v) {
+        if(!u||!v) return u|v;
+        pushdn(u);pushdn(v);
+        if(tr[u].prio<tr[v].prio) {
+            tr[u].ch[1]=merge(tr[u].ch[1], v);
+            pushup(u);
+            return u;
+        }
+        else {
+            tr[v].ch[0]=merge(u, tr[v].ch[0]);
+            pushup(v);
+            return v;
+        }
+    }
+    int merge(int x,int y,int z) {
+        return merge(merge(x,y),z);
+    }
+
+    // 按 key 查找元素，若存在多个，返回最靠近根（prio最小）的一个
+    int find(int u,I key) {
+        if(!u||!(tr[u]<key)&&!(key<tr[u])) return u;
+        pushdn(u);
+        if(key<tr[u]) return find(lch,key);
+        return find(rch,key);
+    }
+
+    // 插入新元素 key
+    void insert(I key) {
+        int u=new_node(key);
+        auto [l,r]=split_by_key(root, key);
+        root=merge(l,u,r);
+    }
+
+    // 删除一个元素 key，如果存在多个，仅删除一个
+    void erase(I key) {
+        if(find(root,key)) {
+            auto [l,t]=split_by_key(root, key, false);
+            auto [m,r]=split_by_rank(t, 1);
+            root=merge(l,r);
+        }
+    }
+
+    template<class F> int build(int l,int r,F f) {
+        if(l>r) return 0;
+        int m=(l+r)/2;
+        int u=new_node(f(m));
+        lch=build(l,m-1,f);
+        rch=build(m+1,r,f);
+        pushup(u);
+        return u;
+    }
+
+    // le=0 查询 <key 的元素数量
+    // le=1 查询 <=key 的元素数量
+    int count_less(I key,bool le=false) {
+        auto [l,r]=split_by_key(root, key, le);
+        int cnt=tr[l].sz;
+        root=merge(l,r);
+        return cnt;
+    }
+
+    // 查询 [lkey,rkey] 的元素数量
+    int count_range(I lkey,I rkey) {
+        return count_less(rkey,true)-count_less(lkey);
+    }
+
+    // 查询 key 的排名，即 cnt(<key)+1
+    int rank(I key) {
+        return count_less(key)+1;
+    }
+
+    // 查询排名第 k 的元素，不存在返回0
+    int kth(int rk) {
+        auto [l,m,r]=extract_by_rank(root, rk, rk);
+        root=merge(l,m,r);
+        return m;
+    }
+
+    // 查询 <key 的最右元素，不存在返回0
+    int prev(I key) { return kth(count_less(key)); }
+    // 查询 >key 的左元素，不存在返回0
+    int next(I key) { return kth(count_less(key,true)+1); }
+    // 查询 <=key 的最右元素，不存在返回0
+    int prev_equal(I key) { return kth(count_less(key,true)); }
+    // 查询 >=key 的最左元素，不存在返回0
+    int next_equal(I key) { return kth(count_less(key)+1); }
+
+    bool empty() { return root==0; }
+
+    void clear() {
+        root=0;
+        tr.clear();
+        new_node({});
+        tr[0].set_null();
+    }
+
+    Node &operator[](int id) { return tr[id]; }
+    I operator[](int id) const { return tr[id]; }
+
+    Treap(int sz=0) { tr.reserve(sz),clear(); }
+
+    #undef lch
+    #undef rch
+};
+
+auto rnd=mt19937(random_device()());
+struct Node {
+    int ch[2],prio,sz;
+
+    // 初始化sz=1的子树
+    Node() {
+        ch[0]=ch[1]=0;
+        prio=rnd();
+        sz=1;
+    }
+
+    // 特殊处理0号点信息，以保证实信息+空信息=实信息
+    void set_null() {
+        sz=0;
+    }
+
+    // 左孩子+父节点+右孩子
+    void pushup(const Node &l,const Node &r) {
+        sz=l.sz+1+r.sz;
+    }
+
+    // 通过父节点懒标记更新当前节点的信息和懒标记
+    void update(const Node &p) {
+
+    }
+
+    // 清空懒标记
+    void clear_tag() {
+
+    }
+
+    // 指定Treap对key的排序方式
+    bool operator<(const Node &r) const {
+        
+    }
+};
+```
+
+`merge` 完别忘了更新 `root`。
+
+## 笛卡尔树
+
+笛卡尔树满足左右子树的权值均小于父节点的权值。Treap 就属于一种笛卡尔树。
+
+```cpp
+template<typename T=int> struct CartesianTree {
+    vector<int> lch,rch,stk;
+    vector<T> val;
+    int root,idx;
+
+    void extend(int x) {
+        idx++;
+        lch.emplace_back(0);
+        rch.emplace_back(0);
+        val.emplace_back(x);
+        
+        while(stk.size()&&val[stk.back()]>x) {
+            lch[idx]=stk.back();
+            stk.pop_back();
+        }
+        if(stk.size()) rch[stk.back()]=idx;
+        else root=idx;
+        stk.emplace_back(idx);
+    }
+
+    void clear() {
+        root=idx=0;
+        lch.assign(1,{});
+        rch.assign(1,{});
+        val.assign(1,{});
+        stk.clear();
+    }
+
+    CartesianTree(int sz=0) {
+        lch.reserve(sz+1);
+        rch.reserve(sz+1);
+        val.reserve(sz+1);
+        stk.reserve(sz+1);
+        clear();
+    }
+};
+```
+
+如果需要把小根堆换成大根堆，替换建树比较大小的一行代码。
+
+```cpp
+while(stk.size()&&val[stk.back()]<x)
+```
+
 # 并查集
 
 ## 并查集
@@ -1307,6 +1586,8 @@ namespace hpd {
 
 # 稀疏表
 
+## 一维稀疏表
+
 倍增维护区间最大值。
 
 ```cpp
@@ -1319,7 +1600,7 @@ template<int size,typename T=int> struct SparseTable {
     }
 
     void build(int n) {
-        // for(int i=1;i<=n;i++) st[0][i]=arr[i]; // todo
+        for(int i=1;i<=n;i++) st[0][i]=arr[i];
         for(int k=1,t=1<<k;k<M;k++,t<<=1)
             for(int i=1,j=i+t-1,mid=i+t/2;j<=n;i++,j++,mid++)
                 st[k][i]=merge(st[k-1][i],st[k-1][mid]);
@@ -1329,6 +1610,87 @@ template<int size,typename T=int> struct SparseTable {
         if(r<l) return 0;
         int k=__lg(r-l+1);
         return merge(st[k][l],st[k][r-(1<<k)+1]);
+    }
+};
+```
+
+## 二维稀疏表
+
+空间与预处理复杂度为 $\mathcal{O}(nm \log n \log m)$。查询复杂度 $\mathcal{O}(1)$。
+
+```cpp
+template<int N,int M,typename T=int> struct SparseTable2D {
+    T st[__lg(N)+1][__lg(M)+1][N][M];
+
+    T merge(const T &x,const T &y) {
+        return max(x,y);
+    }
+
+    void build(int n,int m) {
+        for(int i=1;i<=n;i++)
+            for(int j=1;j<=m;j++)
+                st[0][0][i][j]=arr[i][j];
+
+        for(int a=0,s=1;s<=n;a++,s<<=1) {
+            for(int i=1,j=1+s/2,k=s;k<=n&&a;i++,j++,k++)
+                for(int x=1;x<=m;x++)
+                    st[a][0][i][x]=merge(
+                        st[a-1][0][i][x],st[a-1][0][j][x]
+                    );
+
+            for(int b=1,t=2;t<=m;b++,t<<=1)
+                for(int i=1;i+s-1<=n;i++)
+                    for(int x=1,y=1+t/2,z=t;z<=m;x++,y++,z++)
+                        st[a][b][i][x]=merge(
+                            st[a][b-1][i][x],st[a][b-1][i][y]
+                        );
+        }
+    }
+
+    T query(int i,int x,int k,int z) {
+        if(i>k||x>z) return {};
+        int a=__lg(k-i+1);
+        int b=__lg(z-x+1);
+        int j=k-(1<<a)+1;
+        int y=z-(1<<b)+1;
+        return merge(
+            merge(st[a][b][i][x],st[a][b][i][y]),
+            merge(st[a][b][j][x],st[a][b][j][y])
+        );
+    }
+};
+SparseTable2D<N, N> st;
+```
+
+## 二维稀疏表 仅有正方形矩阵查询
+
+```cpp
+template<int N,int M,typename T=int> struct SparseTable2D {
+    T st[max(__lg(N),__lg(M))+1][N][M];
+
+    T merge(T a,T b,T c,T d) {
+        return max({a,b,c,d});
+    }
+
+    void build(int n,int m) {
+        for(int i=1;i<=n;i++)
+            for(int j=1;j<=m;j++)
+                st[0][i][j]=arr[i][j];
+
+        for(int b=1,t=1<<b;t<=min(n,m);b++,t<<=1)
+            for(int i=1,j=i+t/2,k=i+t-1;k<=n;i++,j++,k++)
+                for(int x=1,y=x+t/2,z=x+t-1;z<=m;x++,y++,z++)
+                    st[b][i][x]=merge(
+                        st[b-1][i][x],st[b-1][i][y],
+                        st[b-1][j][x],st[b-1][j][y]
+                    );
+    }
+
+    T query(int i,int x,int len) {
+        int b=__lg(len);
+        int j=i+len-1-(1<<b)+1;
+        int y=x+len-1-(1<<b)+1;
+        return merge(st[b][i][x],st[b][i][y],st[b][j][x],st[b][j][y]);
     }
 };
 ```
