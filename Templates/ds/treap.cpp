@@ -113,11 +113,19 @@ template<class Node> struct Treap {
         return u;
     }
 
-    int rank(I key,bool le=false) {
+    int count_less(I key,bool le=false) {
         auto [l,r]=split_by_key(root, key, le);
-        int rk=tr[l].sz+1;
+        int cnt=tr[l].sz;
         root=merge(l,r);
-        return rk;
+        return cnt;
+    }
+
+    int count_range(I lkey,I rkey) {
+        return count_less(rkey,true)-count_less(lkey);
+    }
+
+    int rank(I key) {
+        return count_less(key)+1;
     }
 
     int kth(int rk) {
@@ -126,10 +134,10 @@ template<class Node> struct Treap {
         return m;
     }
 
-    int prev(I key) { return kth(rank(key)-1); }
-    int next(I key) { return kth(rank(key,true)); }
-    int prev_equal(I key) { return kth(rank(key,true)-1); }
-    int next_equal(I key) { return kth(rank(key)); }
+    int prev(I key) { return kth(count_less(key)); }
+    int next(I key) { return kth(count_less(key,true)+1); }
+    int prev_equal(I key) { return kth(count_less(key,true)); }
+    int next_equal(I key) { return kth(count_less(key)+1); }
 
     bool empty() { return root==0; }
 
