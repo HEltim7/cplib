@@ -27,6 +27,9 @@
   - [可撤销并查集](#可撤销并查集)
 - [树链剖分](#树链剖分)
 - [稀疏表](#稀疏表)
+  - [一维稀疏表](#一维稀疏表)
+  - [二维稀疏表](#二维稀疏表)
+  - [二维稀疏表 仅有正方形矩阵查询](#二维稀疏表-仅有正方形矩阵查询)
 - [Link Cut Tree](#link-cut-tree)
   - [LCT](#lct)
   - [调试\&卡常](#调试卡常)
@@ -1586,6 +1589,8 @@ namespace hpd {
 
 # 稀疏表
 
+下标都从1开始，也可以直接改成从0开始。
+
 ## 一维稀疏表
 
 倍增维护区间最大值。
@@ -1666,7 +1671,7 @@ SparseTable2D<N, N> st;
 
 ```cpp
 template<int N,int M,typename T=int> struct SparseTable2D {
-    T st[max(__lg(N),__lg(M))+1][N][M];
+    T st[1+min(__lg(N),__lg(M))][N][M];
 
     T merge(T a,T b,T c,T d) {
         return max({a,b,c,d});

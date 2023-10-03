@@ -1,6 +1,6 @@
 template<int N,int M,typename T=int> struct SparseTable2D {
     using F=function<T(T,T)>;
-    T st[max(__lg(N),__lg(M))+1][N][M];
+    T st[1+min(__lg(N),__lg(M))][N][M];
     F _merge;
 
     T merge(T a,T b,T c,T d) {
