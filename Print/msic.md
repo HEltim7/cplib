@@ -1059,3 +1059,53 @@ namespace eval {
     }
 }
 ```
+
+# 结论集合
+
+## 约瑟夫环
+
+从 $n$ 个人的循环队列中每次隔 $k$ 个抽出一人出队，求最后出队人编号。
+
+下标从0开始，复杂度 $\mathcal{O}(n)$。
+
+```cpp
+int josephus(int n, int k) {
+	int s = 0;
+	for (int i = 2; i <= n; i++)
+		s = (s + k) % i;
+	return s;
+}
+```
+
+如果要求完整的出队编号序列，可以利用树状数组上二分可以在 $\mathcal{O}(n \log n)$ 时间内求出序列。
+
+```cpp
+int kth(int k) {
+    int pos=0;
+    for(int i=__lg(tr.size()-1);~i;i--)
+        if(pos+(1<<i)<tr.size()&&tr[pos+(1<<i)]<k)
+            pos+=1<<i,k-=tr[pos];
+    return pos;
+}
+
+auto get=[&](int k) {
+    Fenwick<> tr(n);
+    for(int i=0;i<n;i++) tr.modify(i, 1);
+
+    vector<int> p(n);
+    iota(p.begin(), p.end(), 0);
+    int idx=0,tot=n;
+    for(int i=0;i<n;i++) {
+        int step=(k-1)%tot+1;
+        int pre=tr.query(idx-1);
+        int suf=tot-pre;
+        if(suf>=step) idx=tr.kth(pre+step);
+        else idx=tr.kth(step-suf);
+
+        p[i]=idx;
+        tot--;
+        tr.modify(idx, -1);
+    }
+    return p;
+};
+```
