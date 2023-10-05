@@ -53,7 +53,7 @@ void get_centroid(int u,int fa,int tot) {
 
 ```cpp
 namespace hpd {
-    constexpr int N=1e5+10; // ***
+    constexpr int N=1e5+10;
     vector<int> adj[N];
     int dep[N],sz[N],top[N],p[N],hch[N];
 
@@ -90,6 +90,7 @@ namespace hpd {
 
     void clear(int n) {
         fill(hch, hch+n+1, 0);
+        for(int i=0;i<=n;i++) adj[i].clear();
     }
 }
 ```

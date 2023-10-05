@@ -1583,6 +1583,7 @@ namespace hpd {
     void clear(int n) {
         cnt=0;
         fill(hch, hch+n+1, 0);
+        for(int i=0;i<=n;i++) adj[i].clear();
     }
 }
 ```

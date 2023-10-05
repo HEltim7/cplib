@@ -1,7 +1,7 @@
 // ! don't confuse dfn id with node id
 namespace hpd {
     using PII=pair<int,int>;
-    constexpr int N=1e5+10; // ***
+    constexpr int N=1e5+10;
     int id[N],w[N],ori[N],cnt;
     int dep[N],sz[N],top[N],p[N],hch[N];
     vector<int> adj[N];
@@ -56,5 +56,6 @@ namespace hpd {
     void clear(int n) {
         cnt=0;
         fill(hch, hch+n+1, 0);
+        for(int i=0;i<=n;i++) adj[i].clear();
     }
 }
