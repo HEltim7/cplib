@@ -1,16 +1,18 @@
 template<typename I,typename L,I mod> struct Modint {
     I v;
-    constexpr I pow(L b) const {
-        L res=1,a=v;
-        while(b) { if(b&1) res=res*a%mod; b>>=1; a=a*a%mod; }
+    constexpr I _pow(L k) const {
+        L res=1,x=v;
+        while(k) { if(k&1) res=res*x%mod; k>>=1; x=x*x%mod; }
         return res;
     }
-    constexpr I inv() const { return pow(mod-2); }
+    constexpr I _inv() const { return _pow(mod-2); }
+    constexpr Modint pow(L k) const { return Modint(_pow(k)); }
+    constexpr Modint inv(L k) const { return Modint(_inv(k)); }
 
     constexpr Modint &operator+=(const Modint &x) { v+=x.v; v-=v>=mod?mod:0; return *this; }
     constexpr Modint &operator-=(const Modint &x) { v-=x.v; v+=v<0?mod:0; return *this; }
     constexpr Modint &operator*=(const Modint &x) { v=L(1)*v*x.v%mod; return *this; }
-    constexpr Modint &operator/=(const Modint &x) { v=L(1)*v*x.inv()%mod; return *this; }
+    constexpr Modint &operator/=(const Modint &x) { v=L(1)*v*x._inv()%mod; return *this; }
 
     friend constexpr Modint operator+(Modint l,const Modint &r) { return l+=r; }
     friend constexpr Modint operator-(Modint l,const Modint &r) { return l-=r; }

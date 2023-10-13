@@ -13,6 +13,7 @@
 # Modint
 
 ```cpp
+// 注意pow和inv返回类型不是Mint
 template<typename I,typename L,I mod> struct Modint {
     I v;
     I pow(L b) const {
