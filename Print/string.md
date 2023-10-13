@@ -2,6 +2,7 @@
 
 - [kmp](#kmp)
 - [Z函数](#z函数)
+  - [求最小整周期](#求最小整周期)
 - [最小表示法](#最小表示法)
 - [字符串哈希](#字符串哈希)
 - [AC自动机](#ac自动机)
@@ -14,7 +15,7 @@
     - [在线构造](#在线构造)
     - [离线构造](#离线构造)
   - [后缀数组](#后缀数组)
-- [后缀自动机 - 应用](#后缀自动机---应用)
+- [后缀结构 - 应用](#后缀结构---应用)
   - [拓扑序](#拓扑序)
   - [不同子串数](#不同子串数)
   - [子串出现次数](#子串出现次数)
@@ -113,6 +114,28 @@ vector<int> zfunc(const string &s) {
     }
     return z;
 }
+```
+
+## 求最小整周期
+
+可以使用z函数或者kmp来求字符串的最小整周期，即能被串长整除的最小周期。
+
+- 使用z函数：找到第一个前后缀完美匹配且整除的位置即可。
+- 使用kmp：从最后位置开始不断跳link，直到可整除为止。
+
+```cpp
+auto get_rep=[&](string s) {
+    auto &&z=zfunc(s);
+    int mn=s.size();
+    for(int i=1;i<z.size();i++) {
+        if(s.size()%i==0&&z[i]==s.size()-i) {
+            mn=i;
+            break;
+        }
+    }
+    string t=s.substr(0,mn);
+    return t;
+};
 ```
 
 # 最小表示法
@@ -634,49 +657,53 @@ struct GeneralSuffixAutomaton {
 时间复杂度 $\mathcal{O}(|S|\log|S|)$。
 
 ```cpp
-constexpr int N=1e6+10;
+namespace SA {
+    string s;
+    constexpr int N=1e6+10;
+    int fir[N],sec[N],cnt[N];
+    int sa[N],rk[N],height[N];
 
-int n,m=1<<7;
-string s;
-int fir[N],sec[N],cnt[N];
-int sa[N],rk[N],height[N];
-
-void get_sa() {
-    for(int i=1;i<=n;i++) cnt[fir[i]=s[i]]++;
-    for(int i=2;i<=m;i++) cnt[i]+=cnt[i-1];
-    for(int i=n;i;i--) sa[cnt[fir[i]]--]=i;
-
-    for(int k=1;k<=n;k<<=1) {
-        int num=0;
-        for(int i=n-k+1;i<=n;i++) sec[++num]=i;
-        for(int i=1;i<=n;i++) if(sa[i]>k) sec[++num]=sa[i]-k;
-        for(int i=1;i<=m;i++) cnt[i]=0;
-        for(int i=1;i<=n;i++) cnt[fir[i]]++;
+    void get_sa() {
+        int m=1<<7;
+        int n=s.size()-1;
+        for(int i=1;i<=n;i++) cnt[fir[i]=s[i]]++;
         for(int i=2;i<=m;i++) cnt[i]+=cnt[i-1];
-        for(int i=n;i;i--) sa[cnt[fir[sec[i]]]--]=sec[i],sec[i]=0;
-        swap(fir,sec);
-        fir[sa[1]]=num=1;
-        for(int i=2;i<=n;i++)
-            fir[sa[i]]=(sec[sa[i]]==sec[sa[i-1]]&&sec[sa[i]+k]==sec[sa[i-1]+k])
-                ?num:++num;
-        if(num==n) break;
-        m=num;
-    }
-}
+        for(int i=n;i;i--) sa[cnt[fir[i]]--]=i;
 
-void get_height() {
-    for(int i=1;i<=n;i++) rk[sa[i]]=i;
-    for(int i=1,k=0;i<=n;i++) {
-        if(rk[i]==1) continue;
-        if(k) k--;
-        int j=sa[rk[i]-1];
-        while(i+k<=n&&j+k<=n&&s[i+k]==s[j+k]) k++;
-        height[rk[i]]=k;
+        for(int k=1;k<=n;k<<=1) {
+            int num=0;
+            for(int i=n-k+1;i<=n;i++) sec[++num]=i;
+            for(int i=1;i<=n;i++) if(sa[i]>k) sec[++num]=sa[i]-k;
+            for(int i=1;i<=m;i++) cnt[i]=0;
+            for(int i=1;i<=n;i++) cnt[fir[i]]++;
+            for(int i=2;i<=m;i++) cnt[i]+=cnt[i-1];
+            for(int i=n;i;i--) sa[cnt[fir[sec[i]]]--]=sec[i],sec[i]=0;
+            swap(fir,sec);
+            fir[sa[1]]=num=1;
+            for(int i=2;i<=n;i++)
+                fir[sa[i]]=(
+                    sec[sa[i]]==sec[sa[i-1]]&&sec[sa[i]+k]==sec[sa[i-1]+k]
+                )?num:++num;
+            if(num==n) break;
+            m=num;
+        }
     }
-}
+
+    void get_height() {
+        int n=s.size()-1;
+        for(int i=1;i<=n;i++) rk[sa[i]]=i;
+        for(int i=1,k=0;i<=n;i++) {
+            if(rk[i]==1) continue;
+            if(k) k--;
+            int j=sa[rk[i]-1];
+            while(i+k<=n&&j+k<=n&&s[i+k]==s[j+k]) k++;
+            height[rk[i]]=k;
+        }
+    }
+} using SA::sa,SA::rk,SA::height;
 ```
 
-# 后缀自动机 - 应用
+# 后缀结构 - 应用
 
 ## 拓扑序
 
@@ -691,15 +718,51 @@ void toposort() {
     vector<int> ind(size());
     for(int i=1;i<size();i++) ind[edp[i].link]++;
     for(int i=1;i<size();i++) if(!ind[i]) q.push_back(i);
-    for(int i=0;i<q.size();i++) {
-        int u=q[i];
+    for(int u:q) {
         int p=edp[u].link;
         if(p&&!--ind[p]) q.push_back(p);
     }
 }
 ```
 
+类似的，对于广义 $\text{SAM}$，可以用树上暴力染色求指定串的拓扑序。
+
+复杂度，如果有 $n$ 个串，$i$ 串长 $|s_i|$，串长总和为 $|S|$，那么对 $i$ 串求拓扑序的最坏复杂度为 $\mathcal{O}(\min ({|s_i|}^2,|S|))$。
+
+对 $n$ 个串全部求一遍的最坏复杂度为 $\mathcal{O}(|S| \sqrt {|S|})$，当每个串的长度都为 $\sqrt {|S|}$ 时取到。实际上这个上界是比较松的。
+
+```cpp
+vector<int> toporder;
+void toposort(string &s) {
+    auto &q=toporder;
+    static int cid=0;
+    static vector<int> col,ind,vec;
+    col.resize(size()),ind.resize(size());
+    vec.clear(),q.clear();
+    cid++;
+
+    int u=0;
+    for(char x:s) {
+        int c=x-B;
+        u=edp[u].ch[c];
+        for(int p=u;p&&col[p]!=cid;p=edp[p].link) {
+            col[p]=cid;
+            vec.emplace_back(p);
+            ind[edp[p].link]++;
+        }
+    }
+
+    for(int u:vec) if(!ind[u]) q.emplace_back(u);
+    for(int u:q) {
+        int p=edp[u].link;
+        if(p&&!--ind[p]) q.emplace_back(p);
+    }
+}
+```
+
 ## 不同子串数
+
+**SAM**
 
 求串 $S$ 有多少个本质不同的子串。利用 $\text{SAM}$ 的性质，每个等价类包含的子串数量为 `edp[u].len-edp[edp[u].link].len`。
 
@@ -711,6 +774,14 @@ for(int i=1;i<sam.size();i++)
 ```
 
 这个问题可以拓展到多串：求多个串本质不同的子串，使用 $\text{GSAM}$ 即可。
+
+**SA**
+
+根据 $height$ 数组的性质，第 $sa[i]$ 个后缀产生了 $n-sa[i]+1-height[i]$ 个新的串，统计一遍即可。
+
+```cpp
+for(int i=1;i<=n;i++) ans+=n-sa[i]+1-height[i];
+```
 
 ## 子串出现次数
 
@@ -757,7 +828,7 @@ int match(const string &t) {
 
 类似的还有多串最长公共子串。做法也是类似的，首先找出最短的一个串 $s$ （否则时间复杂度无法保证），然后对 $s$ 以外的所有串建 $\text{SAM}$ 并同时进行匹配。
 
-时间复杂度 $\mathcal{O}(k|s|)$，其中 $k$ 为串数。
+设总串数为 $n$，总长为 $S$，那么时间复杂度为 $\mathcal{O}(n|s|)$，考虑到 $n \le \frac{|S|}{|s|}$，因此 $\mathcal{O}(n|s|)=\mathcal{O}(|S|)$。
 
 ```cpp
 int ans=0;
@@ -780,24 +851,14 @@ for(auto x:s[idx]) {
 
 求有多少个原串含有指定子串。
 
-类似与求子串出现次数，但是在一个原串中出现仅算一次。首先建立 $\text{GSAM}$，然后对于每个串进行树上涂色操作，即可求出在该串中出现的等价类有哪些。
+类似与求子串出现次数，但是在一个原串中出现仅算一次。首先建立 $\text{GSAM}$，然后参考拓扑序的部分求出每个串的拓扑序（其实可以不排序），把这些状态都 $+1$ 即可。
+
+最坏复杂度 $\mathcal{O}(|S| \sqrt {|S|})$。可以使用 `std::set` 和启发式合并做到 $\mathcal{O}(|S| \log^2 |S|)$，用线段树合并可以做到 $\mathcal{O}(|S| \log |S|)$。但是暴力染色的做法常数小上界松，所以一般直接暴就完了。
 
 ```cpp
-void markup(const string &s) {
-    vector<int> q;
-    int u=0;
-    for(auto x:s) {
-        int c=x-B;
-        u=edp[u].ch[c];
-        q.push_back(u);
-        edp[u].mark=1;
-    }
-    for(int i=0;i<q.size();i++) {
-        int u=q[i],p=edp[u].link;
-        edp[u].cnt++;
-        if(p&&!edp[p].mark) q.push_back(p),edp[p].mark=1;
-    }
-    for(int u:q) edp[u].mark=0;
+void update_count(string &s) {
+    toposort(s);
+    for(int u:toporder) edp[u].cnt++;
 }
 ```
 
@@ -813,7 +874,7 @@ LL count(int k) {
 }
 ```
 
-时间复杂度 $\mathcal{O}(k|T|)$。不要使用这个方法求多串最长公共子串，会被卡超时。
+不要使用这个方法求多串最长公共子串，对每个串建 $\text{SAM}$ 是更有效率的做法。
 
 ## 定位子串
 
