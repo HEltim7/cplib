@@ -8,7 +8,7 @@ namespace sgt {
     };
     constexpr int M=N*(__lg(N)+1)*2;
     vector<Node> tr(M);
-    int idx,rng_l,rng_r;
+    int idx,L,R;
 
     int new_node() {
         assert(++idx<M);
@@ -42,7 +42,7 @@ namespace sgt {
             pushup(u),pushup(v);
         }
     }
-	void merge(int &u,int v) { merge(u,v,rng_l,rng_r); }
+	void merge(int &u,int v) { merge(u,v,L,R); }
 
     pair<int,int> split(int u,int l,int r,int p) {
         if(r<p) return {u,0};
@@ -57,7 +57,7 @@ namespace sgt {
         pushup(u),pushup(v);
         return {u,v};
     }
-	pair<int,int> split(int u,int p) { return split(u,rng_l,rng_r,p); }
+	pair<int,int> split(int u,int p) { return split(u,L,R,p); }
 
     int extract(int &u,int l,int r,int x,int y) {
         auto [a,b]=split(u, l, r, x);
@@ -65,7 +65,7 @@ namespace sgt {
         merge(a, d, l, r);
         return u=a,c;
     }
-	int extract(int &u,int l,int r) { return extract(u,rng_l,rng_r,l,r); }
+	int extract(int &u,int l,int r) { return extract(u,L,R,l,r); }
 
     int query(int u,int l,int r,int x,int y) {
         if(!u||l>y||r<x) return {};
@@ -76,7 +76,7 @@ namespace sgt {
         int mid=(l+r)/2;
         return query(lch, l, mid, x, y)+query(rch, mid+1, r, x, y);
     }
-	int query(int u,int l,int r) { return query(u,rng_l,rng_r,l,r); }
+	int query(int u,int l,int r) { return query(u,L,R,l,r); }
 
     void modify(int &u,int l,int r,int p,int v) {
         if(!u) u=new_node();
@@ -91,9 +91,9 @@ namespace sgt {
             pushup(u);
         }
     }
-	void modify(int &u,int p,int v) { modify(u,rng_l,rng_r,p,v); }
+	void modify(int &u,int p,int v) { modify(u,L,R,p,v); }
 
-	void init(int l,int r) { idx=0,rng_l=l,rng_r=r; }
+	void init(int l,int r) { idx=0,L=l,R=r; }
 
     #undef lch
     #undef rch

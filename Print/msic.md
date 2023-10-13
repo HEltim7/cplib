@@ -13,6 +13,7 @@
     - [时间线偏序](#时间线偏序)
     - [绝对值拆分与序列反转](#绝对值拆分与序列反转)
     - [CDQ 分治优化 1D/1D 动态规划的转移](#cdq-分治优化-1d1d-动态规划的转移)
+- [线段树分治](#线段树分治)
 - [点分治与动态点分治](#点分治与动态点分治)
 - [DSU on Tree](#dsu-on-tree)
 - [哈希](#哈希)
@@ -27,6 +28,8 @@
 - [整数三分](#整数三分)
 - [大整数乘法](#大整数乘法)
 - [表达式求值](#表达式求值)
+- [结论集合](#结论集合)
+  - [约瑟夫环](#约瑟夫环)
 
 # 莫队
 
@@ -532,6 +535,62 @@ $$
 如果某些问题带修，且一次修改依赖前面的修改（修改之间不独立），那么也可以用类似的思路解决。
 
 修改递归顺序后，不方便再使用双指针进行排序，这个时候直接暴力`std::sort`即可。
+
+# 线段树分治
+
+线段树分治可以将 “增+删” 转化为 “增+撤销/持久化”，代价是多一个log的复杂度，并且要求问题可离线。
+
+```cpp
+namespace sd {
+    #define lch (u<<1)
+    #define rch (u<<1|1)
+    using T=int;
+    vector<vector<T>> seg;
+    int L,R;
+
+    void add(int u,int x,int y,int l,int r,T val) {
+        if(x>r||y<l) return;
+        if(x<=l&&y>=r) seg[u].emplace_back(val);
+        else {
+            int mid=(l+r)/2;
+            add(lch,x,y,l,mid,val);
+            add(rch,x,y,mid+1,r,val);
+        }
+    }
+    void add(int x,int y,T val) {
+        add(1,x,y,L,R,val);
+    }
+
+    void solve(int u,int l,int r) {
+        // apply
+        for(auto x:seg[u]) {
+            
+        }
+
+        // update ans
+        if(l==r) ;
+        else {
+            int mid=(l+r)/2;
+            solve(lch,l,mid);
+            solve(rch,mid+1,r);
+        }
+
+        // undo
+    }
+    void solve() {
+        solve(1,L,R);
+    }
+
+    void init(int l,int r) {
+        L=l,R=r;
+        seg.clear();
+        seg.resize(4<<__lg(r-l+1)|1);
+    }
+
+    #undef lch
+    #undef rch
+}
+```
 
 # 点分治与动态点分治
 

@@ -1,25 +1,16 @@
-template<class Info,int node_size>
-struct PersistentSegmentTree {
-    int idx,rng_l,rng_r;
-    vector<int> root;
-    array<Info, node_size> info;
-    array<int, node_size> lch,rch;
-
-    int ver() {
-        return root.size()-1;
-    }
+template<class Info> struct PersistentSegmentTree {
+    int L,R;
+    vector<int> lch,rch;
+    vector<Info> info;
 
     int new_node() {
-        assert(idx<node_size);
-        return ++idx;
+        lch.emplace_back();
+        rch.emplace_back();
+        info.emplace_back();
+        return info.size()-1;
     }
 
-    int new_root() {
-        root.emplace_back();
-        return ver();
-    }
-
-    void clone(int u,int v) {
+    void clone(int v,int u) {
         info[u]=info[v];
         lch[u]=lch[v];
         rch[u]=rch[v];
@@ -30,85 +21,44 @@ struct PersistentSegmentTree {
     }
 
     Info query(int u,int l,int r,int x,int y) {
-        if(l>y||r<x) return {};
+        if(!u||l>y||r<x) return {};
         if(l>=x&&r<=y) return info[u];
-        int mid=(l+r)/2;
-        return query(lch[u],l,mid,x,y)+query(rch[u],mid+1,r,x,y);
+        int m=l+(r-l)/2;
+        return query(lch[u],l,m,x,y)+query(rch[u],m+1,r,x,y);
     }
-    Info query(int u,int l,int r) {
-        return query(root[u],rng_l,rng_r,l,r);
-    }
+    Info query(int rt,int l,int r) { return query(rt,L,R,l,r); }
 
-    Info range_query(int u,int v,int l,int r,int x,int y) {
-        if(l>y||r<x) return {};
+    Info query(int v,int u,int l,int r,int x,int y) {
+        if(!u||l>y||r<x) return {};
         if(l>=x&&r<=y) return info[u]-info[v];
-        int mid=(l+r)/2;
-        return range_query(lch[u],lch[v],l,mid,x,y)+
-               range_query(rch[u],rch[v],mid+1,r,x,y);
+        int m=l+(r-l)/2;
+        return query(lch[v],lch[u],l,m,x,y)+
+            query(rch[v],rch[u],m+1,r,x,y);
     }
-    Info range_query(int u,int v,int l,int r) {
-        return range_query(root[u],root[v],rng_l,rng_r,l,r);
+    Info query(int lrt,int rrt,int l,int r) {
+        return query(lrt,rrt,L,R,l,r);
     }
 
-    void modify(int &u,int v,int l,int r,int p,const Info &val) {
-        u=new_node();
-        clone(u, v);
-        if(l==r) info[u]+=val;
+    int modify(int v,int l,int r,int p,const Info &val) {
+        int u=new_node();
+        if(v) clone(v,u);
+        else info[u].init(l,r);
+        if(l==r) info[u].update(val);
         else {
-            int mid=(l+r)/2;
-            if(p<=mid) modify(lch[u],lch[v],l,mid,p,val);
-            else modify(rch[u],rch[v],mid+1,r,p,val);
+            int m=l+(r-l)/2;
+            if(p<=m) lch[u]=modify(lch[v],l,m,p,val);
+            else rch[u]=modify(rch[v],m+1,r,p,val);
             pushup(u);
         }
+        return u;
     }
-    void modify(int u,int v,int p,const Info &val) {
-        modify(root[u],root[v],rng_l,rng_r,p,val);
-    }
-
-    int update(int p,const Info &val) {
-        new_root();
-        modify(root[ver()],root[ver()-1],rng_l,rng_r,p,val);
-        return ver();
+    int modify(int rt,int p,const Info &val) {
+        return modify(rt,L,R,p,val);
     }
 
-    template<class F>
-    int find_first(int u,int l,int r,int x,int y,F check) {
-        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
-        if(l==r) return l;
-        int mid=(l+r)/2;
-        int res=find_first(lch[u],l,mid,x,y,check);
-        if(res==-1) res=find_first(rch[u],mid+1,r,x,y,check);
-        return res;
-    }
-    template<class F> int find_first(int u,int l,int r,F check) {
-        return find_first(root[u],rng_l,rng_r,l,r,check);
-    }
-
-    template<class F>
-    int find_last(int u,int l,int r,int x,int y,F check) {
-        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
-        if(l==r) return l;
-        int mid=(l+r)/2;
-        int res=find_last(rch[u],mid+1,r,x,y,check);
-        if(res==-1) res=find_last(lch[u],l,mid,x,y,check);
-        return res;
-    }
-    template<class F> int find_last(int u,int l,int r,F check) {
-        return find_last(root[u],rng_l,rng_r,l,r,check);
-    }
-
-    void build(int &u,int l,int r) {
-        u=new_node();
-        info[u].init(l,r);
-        if(l!=r) {
-            int mid=(l+r)>>1;
-            build(lch[u],l,mid);
-            build(rch[u],mid+1,r);
-            pushup(u);
-        }
-    }
-    void build(int l,int r) {
-        build(root[new_root()],rng_l=l,rng_r=r);
+    PersistentSegmentTree(int l,int r,int sz=0):L(l),R(r) {
+        lch.reserve(sz),rch.reserve(sz),info.reserve(sz);
+        new_node();
     }
 };
 
@@ -121,20 +71,18 @@ struct Info {
 
     friend Info operator+(const Info &l,const Info &r) {
         Info res;
-        
+
         return res;
     }
-    
+
+    // l-r,not r-l
     friend Info operator-(const Info &l,const Info &r) {
         Info res;
 
         return res;
     }
 
-    Info &operator+=(const Info &v) {
+    void update(const Info &v) {
 
-        return *this;
     }
 };
-
-PersistentSegmentTree<Info, N*__lg(N)*4> sgt;

@@ -1,108 +1,44 @@
-template<class Info,class Tag,int size> struct SegmentTree {
+template<class Info,int size> struct SegmentTree {
     #define lch ((u)<<1)
     #define rch ((u)<<1|1)
 
-    int rng_l,rng_r;
-    constexpr static int node_size=1<<__lg(size)<<2|1;
-    array<Tag, node_size> tag;
+    int L,R;
+    constexpr static int node_size=4<<__lg(size)|1;
     array<Info, node_size> info;
-    array<bool, node_size> clean;
+    array<int, size+1> leaf;
 
     void pushup(int u) {
         info[u]=info[lch]+info[rch];
     }
 
-    void update(int u, const Tag &t) {
-        info[u]+=t;
-        tag[u]+=t;
-        clean[u]=0;
-    }
-
-    void pushdn(int u) {
-        if(clean[u]) return;
-        update(lch, tag[u]);
-        update(rch, tag[u]);
-        clean[u]=1;
-        tag[u].clear();
-    }
-
     Info query(int u,int l,int r,int x,int y) {
         if(l>y||r<x) return {};
         if(l>=x&&r<=y) return info[u];
-        pushdn(u);
-        int mid=(l+r)/2;
-        return query(lch,l,mid,x,y)+query(rch,mid+1,r,x,y);
+        int m=(l+r)/2;
+        return query(lch,l,m,x,y)+query(rch,m+1,r,x,y);
     }
-    Info query(int l,int r) { return query(1,rng_l,rng_r,l,r); }
+    Info query(int l,int r) { return query(1,L,R,l,r); }
 
-    void modify(int u,int l,int r,int x,int y,const Tag &t) {
-        if(l>y||r<x) return;
-        if(l>=x&&r<=y) update(u, t);
-        else {
-            pushdn(u);
-            int mid=(l+r)/2;
-            if(mid>=x) modify(lch,l,mid,x,y,t);
-            if(mid<y) modify(rch,mid+1,r,x,y,t);
-            pushup(u);
-        }
-    }
-    void modify(int l,int r,const Tag &t) { modify(1,rng_l,rng_r,l,r,t); }
-
-    template<class F>
-    int find_first(int u,int l,int r,int x,int y,F check) {
-        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
-        if(l==r) return l;
-        pushdn(u);
-        int mid=(l+r)/2;
-        int res=find_first(lch,l,mid,x,y,check);
-        if(res==-1) res=find_first(rch,mid+1,r,x,y,check);
-        return res;
-    }
-    template<class F> int find_first(int l,int r,F check) {
-        return find_first(1,rng_l,rng_r,l,r,check);
-    }
-
-    template<class F>
-    int find_last(int u,int l,int r,int x,int y,F check) {
-        if(l>y||r<x||l>=x&&r<=y&&!check(info[u])) return -1;
-        if(l==r) return l;
-        pushdn(u);
-        int mid=(l+r)/2;
-        int res=find_last(rch,mid+1,r,x,y,check);
-        if(res==-1) res=find_last(lch,l,mid,x,y,check);
-        return res;
-    }
-    template<class F> int find_last(int l,int r,F check) {
-        return find_last(1,rng_l,rng_r,l,r,check);
+    void modify(int p,const Info &v) {
+        int u=leaf[p];
+        info[u].update(v);
+        while(u>>=1) pushup(u);
     }
 
     void build(int u,int l,int r) {
-        clean[u]=1;
         info[u].init(l,r);
-        tag[u].clear();
         if(l!=r) {
-            int mid=(l+r)/2;
-            build(lch,l,mid);
-            build(rch,mid+1,r);
+            int m=(l+r)/2;
+            build(lch,l,m);
+            build(rch,m+1,r);
             pushup(u);
         }
+        else leaf[l]=u;
     }
-    void build(int l=1,int r=size) { build(1,rng_l=l,rng_r=r); }
+    void build(int l=1,int r=size) { build(1,L=l,R=r); }
 
     #undef lch
     #undef rch
-};
-
-struct Tag {
-
-    void clear() {
-
-    }
-
-    Tag &operator+=(const Tag &t) {
-
-        return *this;
-    }
 };
 
 struct Info {
@@ -118,10 +54,9 @@ struct Info {
         return res;
     }
 
-    Info &operator+=(const Tag &t) {
+    void update(const Info &v) {
 
-        return *this;
     }
 };
 
-SegmentTree<Info, Tag, N> sgt;
+SegmentTree<Info, N> sgt;
