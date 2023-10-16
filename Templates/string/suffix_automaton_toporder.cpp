@@ -1,13 +1,8 @@
 vector<int> toporder;
 void toposort() {
-    auto &q=toporder;
-    q.clear();
-    q.reserve(size());
-    vector<int> ind(size());
-    for(int i=1;i<size();i++) ind[edp[i].link]++;
-    for(int i=1;i<size();i++) if(!ind[i]) q.push_back(i);
-    for(int u:q) {
-        int p=edp[u].link;
-        if(p&&!--ind[p]) q.push_back(p);
-    }
+    vector<int> cnt(size());
+    toporder.resize(size()-1);
+    for(int i=1;i<size();i++) cnt[edp[i].len]++;
+    partial_sum(cnt.rbegin(),cnt.rend(),cnt.rbegin());
+    for(int i=1;i<size();i++) toporder[--cnt[edp[i].len]]=i;
 }
