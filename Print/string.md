@@ -21,6 +21,7 @@
   - [子串出现次数](#子串出现次数)
   - [最长公共子串](#最长公共子串)
   - [子串在多少原串中出现](#子串在多少原串中出现)
+  - [字典序第k大串](#字典序第k大串)
   - [定位子串](#定位子串)
   - [最长公共前缀 LCP](#最长公共前缀-lcp)
   - [区间 endpos 维护](#区间-endpos-维护)
@@ -161,30 +162,50 @@ string minimize(const string &s) {
 
 # 字符串哈希
 
+字符串双哈希。下标从0开始，如果要改成从1开始，把 `query` 的 `l,r` 都-1即可。
+
+几个可以提升性能的点：预处理幂、`query` 不做额外检查。
+
 ```cpp
+using Hash=pair<int,int>;
+constexpr int p1=998244353,p2=int(1e9)+7;
+Hash operator*(Hash x,Hash y) {
+    return Hash(1LL*x.first*y.first%p1,1LL*x.second*y.second%p2);
+}
+Hash operator+(Hash x,Hash y) {
+    return Hash((x.first+y.first)%p1,(x.second+y.second)%p2);
+}
+Hash operator-(Hash x,Hash y) {
+    return Hash((x.first-y.first+p1)%p1,(x.second-y.second+p2)%p2);
+}
+
 struct HashArray {
-    constexpr static int base=131;
-    vector<Hint> arr,pw;
+    constexpr static Hash base{114514,1919810};
+    vector<Hash> hsh,pw;
 
     void push_back(int x) {
-        arr.push_back(arr.back()*base+x);
+        hsh.push_back(hsh.back()*base+Hash(x,x));
         pw.push_back(pw.back()*base);
     }
 
-    void append(string &s) { for(auto x:s) push_back(x); }
-    void append(vector<int> &s) { for(auto x:s) push_back(x); }
-
-    Hint query(int l,int r) {
-        return arr[r]-arr[l-1]*pw[r-l+1];
+    template<class S> void append(const S &s) {
+        for(auto x:s) push_back(x);
     }
 
-    void clear() { arr.clear(),pw.clear();arr.push_back(0),pw.push_back(1); }
+    Hash query(int l,int r) {
+        // if(l>r) return {};
+        return hsh[r+1]-hsh[l]*pw[r-l+1];
+    }
+
+    void clear() {
+        hsh.clear(),pw.clear();
+        hsh.emplace_back(),pw.emplace_back(1,1);
+    }
     
-    HashArray() { clear(); };
-    HashArray(int sz) {
+    HashArray(int sz=0) {
+        hsh.reserve(sz),pw.reserve(sz);
         clear();
-        arr.reserve(sz),pw.reserve(sz);
-    };
+    }
 };
 ```
 
@@ -707,21 +728,16 @@ namespace SA {
 
 ## 拓扑序
 
-利用后缀链接 $link$ 进行拓扑排序，得到 $parent$ 树的拓扑序。同时根据SAM的性质可知这个序列同时也是DAG的（逆）拓扑序。初始状态不在内，如果需要用到，直接 `push_back(0)` 即可。
+按照 `len` 进行基数排序，得到 $\text{parent}$ 树/自动机 $\text{DAG}$ 的（逆）拓扑序。初始状态不在内，如果需要用到，直接 `push_back(0)` 即可。
 
 ```cpp
 vector<int> toporder;
 void toposort() {
-    auto &q=toporder;
-    q.clear();
-    q.reserve(size());
-    vector<int> ind(size());
-    for(int i=1;i<size();i++) ind[edp[i].link]++;
-    for(int i=1;i<size();i++) if(!ind[i]) q.push_back(i);
-    for(int u:q) {
-        int p=edp[u].link;
-        if(p&&!--ind[p]) q.push_back(p);
-    }
+    vector<int> cnt(size());
+    toporder.resize(size()-1);
+    for(int i=1;i<size();i++) cnt[edp[i].len]++;
+    partial_sum(cnt.rbegin(),cnt.rend(),cnt.rbegin());
+    for(int i=1;i<size();i++) toporder[--cnt[edp[i].len]]=i;
 }
 ```
 
@@ -729,16 +745,16 @@ void toposort() {
 
 复杂度，如果有 $n$ 个串，$i$ 串长 $|s_i|$，串长总和为 $|S|$，那么对 $i$ 串求拓扑序的最坏复杂度为 $\mathcal{O}(\min ({|s_i|}^2,|S|))$。
 
-对 $n$ 个串全部求一遍的最坏复杂度为 $\mathcal{O}(|S| \sqrt {|S|})$，当每个串的长度都为 $\sqrt {|S|}$ 时取到。实际上这个上界是比较松的。
+对 $n$ 个串全部求一遍的最坏复杂度为 $\mathcal{O}(|S| \sqrt {|S|})$，当每个串的长度都为 $\sqrt {|S|}$ 时取到。
 
 ```cpp
 vector<int> toporder;
 void toposort(string &s) {
-    auto &q=toporder;
     static int cid=0;
-    static vector<int> col,ind,vec;
-    col.resize(size()),ind.resize(size());
-    vec.clear(),q.clear();
+    static vector<int> col,vec;
+    vector<int> cnt(s.size()+1);
+    col.resize(size());
+    vec.clear();
     cid++;
 
     int u=0;
@@ -748,15 +764,13 @@ void toposort(string &s) {
         for(int p=u;p&&col[p]!=cid;p=edp[p].link) {
             col[p]=cid;
             vec.emplace_back(p);
-            ind[edp[p].link]++;
+            cnt[edp[p].len]++;
         }
     }
 
-    for(int u:vec) if(!ind[u]) q.emplace_back(u);
-    for(int u:q) {
-        int p=edp[u].link;
-        if(p&&!--ind[p]) q.emplace_back(p);
-    }
+    toporder.resize(vec.size());
+    partial_sum(cnt.rbegin(),cnt.rend(),cnt.rbegin());
+    for(int u:vec) toporder[--cnt[edp[u].len]]=u;
 }
 ```
 
@@ -875,6 +889,34 @@ LL count(int k) {
 ```
 
 不要使用这个方法求多串最长公共子串，对每个串建 $\text{SAM}$ 是更有效率的做法。
+
+## 字典序第k大串
+
+在自动机 $\text{DAG}$ 上dp计算每个点状态往后的路径数，然后在 $\text{SAM}$ 上找即可。
+
+复杂度 $\mathcal{O}(n)$。
+
+```cpp
+string kth(int k) {
+    string res;
+    int u=0;
+    while(edp[u].path>=k) {
+        if(edp[u].cnt>=k) return res;
+        k-=edp[u].cnt;
+        for(int i=0;i<A;i++) {
+            int v=edp[u].ch[i];
+            if(!v) continue;
+            if(edp[v].path>=k) {
+                u=v;
+                res+=B+i;
+                break;
+            }
+            else k-=edp[v].path;
+        }
+    }
+    return string{"-1"};
+}
+```
 
 ## 定位子串
 
