@@ -9,7 +9,7 @@ struct SuffixAutomaton {
     int last=0;
 
     int new_node() {
-        edp.push_back({});
+        edp.emplace_back();
         return edp.size()-1;
     }
 
@@ -35,8 +35,8 @@ struct SuffixAutomaton {
 
     int size() { return edp.size(); }
     void build(const string &s) { for(auto x:s) extend(x); }
-    void clear() { edp.clear(),edp.push_back({-1}),last=0; }
+    void clear() { edp.clear(),edp.emplace_back(-1),last=0; }
     
     SuffixAutomaton(int sz=0) { edp.reserve(sz),clear(); }
     SuffixAutomaton(const string &s) { edp.reserve(s.size()*2),clear(),build(s); }
-} sam;
+};

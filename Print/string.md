@@ -258,17 +258,12 @@ struct AhoCorasickAutomaton {
         }
     }
 
-    int match() {
-
-    }
-
     int size() { return tr.size(); }
-    int new_node() { tr.push_back({});return ++sz; }
+    int new_node() { tr.emplace_back();return ++sz; }
     void clear() { tr.clear();tr.resize(1);sz=0; }
 
-    AhoCorasickAutomaton() { tr.resize(1); }
-    AhoCorasickAutomaton(int sz) { tr.reserve(sz+1);tr.push_back({}); }
-} acam;
+    AhoCorasickAutomaton(int sz=0) { tr.reserve(sz+1);tr.emplace_back(); }
+};
 ```
 
 带fail树
@@ -333,18 +328,13 @@ struct AhoCorasickAutomaton {
         for(int v:tr[u].adj) relabel(v);
         ed[u]=idx;
     }
-    
-    int match() {
-
-    }
 
     int size() { return tr.size(); }
-    int new_node() { tr.push_back({});return ++sz; }
+    int new_node() { tr.emplace_back();return ++sz; }
     void clear() { tr.clear();tr.resize(1);sz=idx=0; }
 
-    AhoCorasickAutomaton() { tr.resize(1); }
-    AhoCorasickAutomaton(int sz) { tr.reserve(sz+1);tr.push_back({}); }
-} acam;
+    AhoCorasickAutomaton(int sz=0) { tr.reserve(sz+1);tr.emplace_back(); }
+};
 ```
 
 # 回文结构
@@ -365,7 +355,7 @@ struct PalindromeAutomaton {
     int last;
 
     int new_node(int len) {
-        node.push_back({len});
+        node.emplace_back(len);
         return node.size()-1;
     }
     
@@ -379,7 +369,7 @@ struct PalindromeAutomaton {
     }
 
     int getfail(int x) {
-        while(str[str.size()-node[x].len-2]!=str.back()) x=node[x].link;
+        while(str.end()[-node[x].len-2]!=str.back()) x=node[x].link;
         return x;
     }
 
@@ -396,12 +386,11 @@ struct PalindromeAutomaton {
         node[last].cnt++;
     }
 
-    void build(string &s) { for(auto x:s) extend(x); }
+    void build(const string &s) { for(auto x:s) extend(x); }
     int size() { return node.size(); }
 
-    PalindromeAutomaton() { clear(); }
-    PalindromeAutomaton(int sz) { str.reserve(sz),node.reserve(sz),clear(); }
-} pam;
+    PalindromeAutomaton(int sz=0) { str.reserve(sz),node.reserve(sz),clear(); }
+};
 ```
 
 ## 双端回文自动机
@@ -420,7 +409,7 @@ struct PalindromeAutomaton {
     int last_l,last_r;
 
     int new_node(int len) {
-        node.push_back({len});
+        node.emplace_back(len);
         return node.size()-1;
     }
     
@@ -433,7 +422,7 @@ struct PalindromeAutomaton {
         node[0].link=1;
     }
 
-    template<typename T> void extend(char x,int &last,T getfail) {
+    template<class F> void extend(char x,int &last,F getfail) {
         int c=x-B;
         int pre=getfail(last);
         if(!node[pre].ch[c]) {
@@ -466,9 +455,8 @@ struct PalindromeAutomaton {
 
     int size() { return node.size(); }
 
-    PalindromeAutomaton() { clear(); }
-    PalindromeAutomaton(int sz) { node.reserve(sz),clear(); }
-} pam;
+    PalindromeAutomaton(int sz=0) { node.reserve(sz),clear(); }
+};
 ```
 
 # 后缀结构
@@ -501,7 +489,7 @@ struct SuffixAutomaton {
     int last=0;
 
     int new_node() {
-        edp.push_back({});
+        edp.emplace_back();
         return edp.size()-1;
     }
 
@@ -527,11 +515,11 @@ struct SuffixAutomaton {
 
     int size() { return edp.size(); }
     void build(const string &s) { for(auto x:s) extend(x); }
-    void clear() { edp.clear(),edp.push_back({-1}),last=0; }
+    void clear() { edp.clear(),edp.emplace_back(-1),last=0; }
     
     SuffixAutomaton(int sz=0) { edp.reserve(sz),clear(); }
     SuffixAutomaton(const string &s) { edp.reserve(s.size()*2),clear(),build(s); }
-} sam;
+};
 ```
 
 ## 广义后缀自动机
@@ -554,8 +542,8 @@ struct GeneralSuffixAutomaton {
     vector<Arr> tr;
     vector<Endpos> edp;
 
-    int new_tr() { tr.push_back({}); return tr.size()-1; }
-    int new_edp() { edp.push_back({}); return edp.size()-1; }
+    int new_tr() { tr.emplace_back(); return tr.size()-1; }
+    int new_edp() { edp.emplace_back(); return edp.size()-1; }
 
     int split(int p,int c,int len) {
         int q=edp[p].ch[c];
@@ -597,12 +585,12 @@ struct GeneralSuffixAutomaton {
     int size() { return edp.size(); }
     
     void clear() {
-        edp.clear(),edp.push_back({-1});
-        tr.clear(),tr.push_back({});
+        edp.clear(),edp.emplace_back(-1);
+        tr.clear(),tr.emplace_back();
     }
     
     GeneralSuffixAutomaton(int sz=0) { edp.reserve(sz),tr.reserve(sz),clear(); }
-} sam;
+};
 ```
 
 ### 离线构造
@@ -620,7 +608,7 @@ struct GeneralSuffixAutomaton {
     };
     vector<Endpos> edp;
 
-    int new_edp() { edp.push_back({}); return edp.size()-1; }
+    int new_edp() { edp.emplace_back(); return edp.size()-1; }
 
     int split(int p,int c,int len) {
         int q=edp[p].ch[c];
@@ -665,15 +653,15 @@ struct GeneralSuffixAutomaton {
     }
 
     int size() { return edp.size(); }
-    void clear() { edp.clear(),edp.push_back({-1}); }
+    void clear() { edp.clear(),edp.emplace_back(-1); }
     
     GeneralSuffixAutomaton(int sz=0) { edp.reserve(sz),clear(); }
-} sam;
+};
 ```
 
 ## 后缀数组
 
-使用倍增法将一个串所有的后缀排序。
+使用倍增法将一个串所有的后缀排序，下标从0开始。
 
 时间复杂度 $\mathcal{O}(|S|\log|S|)$。
 

@@ -8,7 +8,7 @@ struct GeneralSuffixAutomaton {
     };
     vector<Endpos> edp;
 
-    int new_edp() { edp.push_back({}); return edp.size()-1; }
+    int new_edp() { edp.emplace_back(); return edp.size()-1; }
 
     int split(int p,int c,int len) {
         int q=edp[p].ch[c];
@@ -53,7 +53,7 @@ struct GeneralSuffixAutomaton {
     }
 
     int size() { return edp.size(); }
-    void clear() { edp.clear(),edp.push_back({-1}); }
+    void clear() { edp.clear(),edp.emplace_back(-1); }
     
     GeneralSuffixAutomaton(int sz=0) { edp.reserve(sz),clear(); }
-} sam;
+};

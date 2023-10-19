@@ -11,7 +11,7 @@ struct PalindromeAutomaton {
     int last;
 
     int new_node(int len) {
-        node.push_back({len});
+        node.emplace_back(len);
         return node.size()-1;
     }
     
@@ -25,7 +25,7 @@ struct PalindromeAutomaton {
     }
 
     int getfail(int x) {
-        while(str[str.size()-node[x].len-2]!=str.back()) x=node[x].link;
+        while(str.end()[-node[x].len-2]!=str.back()) x=node[x].link;
         return x;
     }
 
@@ -42,9 +42,8 @@ struct PalindromeAutomaton {
         node[last].cnt++;
     }
 
-    void build(string &s) { for(auto x:s) extend(x); }
+    void build(const string &s) { for(auto x:s) extend(x); }
     int size() { return node.size(); }
 
-    PalindromeAutomaton() { clear(); }
-    PalindromeAutomaton(int sz) { str.reserve(sz),node.reserve(sz),clear(); }
-} pam;
+    PalindromeAutomaton(int sz=0) { str.reserve(sz),node.reserve(sz),clear(); }
+};
