@@ -14,13 +14,9 @@
     - [绝对值拆分与序列反转](#绝对值拆分与序列反转)
     - [CDQ 分治优化 1D/1D 动态规划的转移](#cdq-分治优化-1d1d-动态规划的转移)
 - [线段树分治](#线段树分治)
-- [点分治与动态点分治](#点分治与动态点分治)
-- [DSU on Tree](#dsu-on-tree)
 - [哈希](#哈希)
   - [质数表](#质数表)
   - [Hashint](#hashint)
-  - [字符串哈希](#字符串哈希)
-  - [树哈希](#树哈希)
   - [集合哈希](#集合哈希)
 - [DP 模板](#dp-模板)
   - [换根dp](#换根dp)
@@ -28,8 +24,24 @@
 - [整数三分](#整数三分)
 - [大整数乘法](#大整数乘法)
 - [表达式求值](#表达式求值)
-- [结论集合](#结论集合)
-  - [约瑟夫环](#约瑟夫环)
+- [约瑟夫环](#约瑟夫环)
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
 
 # 莫队
 
@@ -592,132 +604,6 @@ namespace sd {
 }
 ```
 
-# 点分治与动态点分治
-
-点分治适合处理大规模的树上路径信息问题。
-
-设当前选中的根为 $u$，则所有树上的所有路径可以分类为：
-
-- 经过 $u$ 的路径
-  - 一端为 $u$ 的路径
-  - 两端都不为 $u$ 的路径
-- 不经过 $u$ 的路径（递归处理）
-
-每次选择新的根后，都要重新计算一遍子树大小。
-
-时间复杂度类似 $\text{CDQ}$ 分治，最多递归 $\log{n}$ 层。
-
-```cpp
-namespace cd {
-    constexpr int N=1e5+10; // ***
-    int sz[N],centroid[2];
-    vector<int> adj[N];
-    bool del[N];
-
-    void get_centroid(int u,int fa,int tot) {
-        int maxx=0;
-        sz[u]=1;
-        for(int v:adj[u]) {
-            if(v!=fa&&!del[v]) {
-                get_centroid(v,u,tot);
-                sz[u]+=sz[v];
-                maxx=max(maxx,sz[v]);
-            }
-        }
-        maxx=max(maxx,tot-sz[u]);
-        if(maxx<=tot/2) centroid[centroid[0]!=0]=u;
-    }
-
-    void solve(int _u,int tot) {
-        centroid[0]=centroid[1]=0;
-        get_centroid(_u, -1, tot);
-        int u=centroid[0];
-        get_centroid(u, -1, tot);
-        del[u]=1;
-
-        for(int v:adj[u]) {
-            if(!del[v]) {
-                // TODO
-            }
-        }
-
-        for(int v:adj[u]) if(!del[v]) solve(v, sz[v]);
-    }
-
-    void clear(int n) {
-        fill(del,del+1+n,0);
-        for(int i=1;i<=n;i++) adj[i].clear();
-    }
-}
-```
-
-# DSU on Tree
-
-dsu on tree 是一种树上的离线算法，可以用来解决形如“多个询问，每次询问一个子树中满足xx性质的节点有多少个”这种问题。
-
-dsu on tree 本质是一种启发式算法，因此被叫做“树上启发式合并”，其过程看起来暴力无比但又可以证明其复杂度是对的。
-
-以树上数颜色为例，假设当前考虑的点为 $u$，算法的流程为：
-
-1. 对于 $u$ 所有的轻儿子，调用`solve(v,keep=0)`。
-2. 对于 $u$ 的重儿子，调用`solve(v,keep=1)`。
-3. 对于 $u$ 所有的轻儿子，利用 $dfn$ 序遍历子树节点，加入其对 $cnt$ 的影响。
-4. 将 $u$ 点的颜色加入 $cnt$ 得到 $ans[u]$。
-5. 若`solve(u)`传入的`keep=0`，利用 $dfn$ 序暴力删除整棵 $u$ 子树对 $cnt$ 的影响。
-
-每个点都不会被遍历超过 $\mathcal{O}(\log n)$ 次，总复杂度为 $\mathcal{O}(n\log n)$。
-
-```cpp
-namespace dsu {
-    constexpr int N=1e5+10; // ***
-    int id[N],ed[N],ori[N],sz[N],hch[N],idx;
-    vector<int> adj[N];
-
-    void init(int u,int fa) {
-        sz[u]=1;
-        id[u]=++idx;
-        ori[id[u]]=u;
-        for(int v:adj[u]) {
-            if(v!=fa) {
-                init(v,u);
-                if(sz[v]>sz[hch[u]]) hch[u]=v;
-                sz[u]+=sz[v];
-            }
-        }
-        ed[u]=idx;
-    }
-
-    void solve(int u,int fa,bool keep) {
-        auto add=[](int id) {
-            int x=ori[id];
-            
-        };
-
-        auto del=[](int id) {
-            int x=ori[id];
-            
-        };
-        
-        for(int v:adj[u]) if(v!=fa&&v!=hch[u]) solve(v,u,0);
-        if(hch[u]) solve(hch[u],u,1);
-        for(int v:adj[u]) 
-            if(v!=fa&&v!=hch[u]) 
-                for(int i=id[v];i<=ed[v];i++) add(i);
-        add(id[u]);
-        
-        // TODO update ans
-
-        if(!keep) for(int i=id[u];i<=ed[u];i++) del(i);
-    }
-
-    void clear(int n=N-1) {
-        idx=0;
-        fill(hch,hch+n+1,0);
-        for(int i=0;i<=n;i++) adj[i].clear();
-    }
-}
-```
-
 # 哈希
 
 ## 质数表
@@ -815,80 +701,6 @@ auto &operator[](int i) const { return v[i]; }
 Hashint(L x=0) { for(int i=0;i<size;i++) v[i]=(x%p[i]+p[i])%p[i]; }
 
 }; using Hint=Hashint<HASHCNT>;
-```
-
-## 字符串哈希
-
-```cpp
-struct HashArray {
-    constexpr static int base=131;
-    vector<Hint> arr,pw;
-
-    void push_back(int x) {
-        arr.push_back(arr.back()*base+x);
-        pw.push_back(pw.back()*base);
-    }
-
-    void append(string &s) { for(auto x:s) push_back(x); }
-    void append(vector<int> &s) { for(auto x:s) push_back(x); }
-
-    Hint query(int l,int r) {
-        return arr[r]-arr[l-1]*pw[r-l+1];
-    }
-
-    void clear() { arr.clear(),pw.clear();arr.push_back(0),pw.push_back(1); }
-    
-    HashArray() { clear(); };
-    HashArray(int sz) {
-        clear();
-        arr.reserve(sz),pw.reserve(sz);
-    };
-};
-```
-
-## 树哈希
-
-基于`xor shift`的树哈希。
-
-```cpp
-struct Hasher {
-    ULL rnd;
-
-    ULL operator()(ULL x) {
-        x^=rnd;
-        x^=x<<13;
-        x^=x>>7;
-        x^=x<<13;
-        x^=rnd;
-        return x;
-    }
-
-    Hasher() {
-        mt19937 gen(random_device{}());
-        rnd=gen();
-    }
-} f;
-```
-
-邓老师版本
-
-```cpp
-struct Hasher {
-    LL rnd1,rnd2;
-
-    LL operator()(LL x) {
-        auto h=[&](LL x) {
-            return x * x * x * rnd1 + rnd2;
-        };
-        LL res = h(x & ((1LL << 31) - 1)) + h(x >> 31);
-        return res;
-    }
-
-    Hasher() {
-        mt19937 gen(random_device{}());
-        rnd1=gen(),rnd2=gen();
-    }
-} f;
 ```
 
 ## 集合哈希
@@ -1119,9 +931,7 @@ namespace eval {
 }
 ```
 
-# 结论集合
-
-## 约瑟夫环
+# 约瑟夫环
 
 从 $n$ 个人的循环队列中每次隔 $k$ 个抽出一人出队，求最后出队人编号。
 

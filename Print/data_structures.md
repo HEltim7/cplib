@@ -25,7 +25,6 @@
 - [并查集](#并查集)
   - [并查集](#并查集-1)
   - [可撤销并查集](#可撤销并查集)
-- [树链剖分](#树链剖分)
 - [稀疏表](#稀疏表)
   - [一维稀疏表](#一维稀疏表)
   - [二维稀疏表](#二维稀疏表)
@@ -40,8 +39,10 @@
     - [最大生成树](#最大生成树)
   - [可撤销地维护MST](#可撤销地维护mst)
   - [维护有根树](#维护有根树)
-- [虚树](#虚树)
 - [Segment Set](#segment-set)
+
+<br/>
+<br/>
 
 # 树状数组
 
@@ -1473,76 +1474,6 @@ struct DisjointUnionSet {
 } dsu;
 ```
 
-# 树链剖分
-
-重链剖分能将树上路径转为$\mathcal{O}(\log n)$级别的连续区间，从而将树上问题转化为区间问题。预处理时间复杂度$\mathcal{O}(n)$,单次路径剖分时间复杂度$\mathcal{O}(\log n)$。
-
-关于实现上的易错点：把`id[u]`写成`u`，务必注意。
-
-```cpp
-// ! don't confuse dfn id with node id
-namespace hpd {
-    using PII=pair<int,int>;
-    constexpr int N=1e5+10;
-    int id[N],w[N],ori[N],cnt;
-    int dep[N],sz[N],top[N],p[N],hch[N];
-    vector<int> adj[N];
-
-    void dfs1(int u,int fa,int d) {
-        dep[u]=d,p[u]=fa,sz[u]=1;
-        for(int v:adj[u]) {
-            if(v==fa) continue;
-            dfs1(v,u,d+1);
-            sz[u]+=sz[v];
-            if(sz[hch[u]]<sz[v]) hch[u]=v;
-        }
-    }
-
-    void dfs2(int u,int t) {
-        id[u]=++cnt,ori[id[u]]=u,top[u]=t;
-        if(!hch[u]) return;
-        dfs2(hch[u],t);
-        for(int v:adj[u])
-            if(v!=p[u]&&v!=hch[u]) dfs2(v,v);
-    }
-
-    int lca(int x,int y) {
-        while(top[x]!=top[y]) {
-            if(dep[top[x]]<dep[top[y]]) swap(x,y);
-            x=p[top[x]];
-        }
-        if(dep[x]<dep[y]) swap(x,y);
-        return y;
-    }
-
-    vector<PII> decompose(int x,int y) {
-        vector<PII> res;
-        while(top[x]!=top[y]) {
-            if(dep[top[x]]<dep[top[y]]) swap(x,y);
-            res.emplace_back(id[top[x]],id[x]);
-            x=p[top[x]];
-        }
-        if(dep[x]<dep[y]) swap(x,y);
-        res.emplace_back(id[y],id[x]);
-        return res;
-    }
-
-    PII decompose(int x) {
-        return { id[x],id[x]+sz[x]-1 };
-    }
-
-    void init() {
-        dfs1(1,-1,1); dfs2(1,1);
-    }
-
-    void clear(int n) {
-        cnt=0;
-        fill(hch, hch+n+1, 0);
-        for(int i=0;i<=n;i++) adj[i].clear();
-    }
-}
-```
-
 # 稀疏表
 
 下标都从1开始，也可以直接改成从0开始。
@@ -2160,92 +2091,6 @@ bool same(int u,int v) {
 ```
 
 `split` 则完全没有用了，因为根固定只能处理根到子节点的路径。
-
-# 虚树
-
-能在 $\mathcal{O}(k \log n)$ 时间内提取树上的 $k$ 个关键点建成一棵新树,并且新树的点数不超过 $2k$。
-
-```cpp
-namespace vt {
-    constexpr int N=1e5+10,M=__lg(N);
-    vector<int> vt[N],adj[N];
-    int stk[N],top,id[N],idx;
-    int fa[N][M+1],dep[N];
-    bool key[N];
-    
-    void lca_init(int u,int p) {
-        dep[u]=dep[p]+1;
-        for(int v:adj[u]) {
-            if(v==p) continue;
-            fa[v][0]=u;
-            for(int i=1;i<=M;i++)
-                fa[v][i]=fa[fa[v][i-1]][i-1];
-            lca_init(v,u);
-        }
-    }
-    
-    int lca(int u,int v) {
-        if(dep[u]<dep[v]) swap(u,v);
-        for(int k=M;~k;k--)
-            if(dep[fa[u][k]]>=dep[v])
-                u=fa[u][k];
-        if(u==v) return u;
-        for(int k=M;~k;k--)
-            if(fa[u][k]!=fa[v][k])
-                u=fa[u][k],v=fa[v][k];
-        return fa[u][0];
-    }
-
-    void relabel(int u,int fa) {
-        id[u]=++idx;
-        for(int v:adj[u]) if(v!=fa) relabel(v, u);
-    }
-
-    void build(vector<int> &vec) {
-        sort(vec.begin(),vec.end(),[](int x,int y) {
-            return id[x]<id[y];
-        });
-
-        // TODO clearup dirt memory
-        auto clear=[&](int u) {
-            vt[u].clear();
-            key[u]=0;
-        };
-
-        auto add=[&](int u,int v) {
-            vt[u].emplace_back(v);
-        };
-        
-        clear(1);
-        stk[top=0]=1;
-        for(int u:vec) {
-            if(u==1) continue;
-            int p=lca(u,stk[top]);
-            if(p!=stk[top]) {
-                while(id[p]<id[stk[top-1]])
-                    add(stk[top-1],stk[top]),top--;
-                if(id[p]!=id[stk[top-1]])
-                    clear(p),add(p,stk[top]),stk[top]=p;
-                else add(p,stk[top--]);
-            }
-            clear(u);
-            stk[++top]=u;
-            key[u]=1;
-        }
-        for(int i=0;i<top;i++) add(stk[i],stk[i+1]);
-    }
-
-    void init() {
-        lca_init(1, 0);
-        relabel(1, 0);
-    }
-
-    void clear(int n) {
-        idx=0;
-        for(int i=0;i<=n;i++) adj[i].clear();
-    }
-}
-```
 
 # Segment Set
 

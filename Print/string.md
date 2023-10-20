@@ -26,6 +26,23 @@
   - [最长公共前缀 LCP](#最长公共前缀-lcp)
   - [区间 endpos 维护](#区间-endpos-维护)
 
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
 # kmp
 
 ```cpp
