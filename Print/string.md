@@ -226,6 +226,38 @@ struct HashArray {
 };
 ```
 
+# $\text{Lyndon}$ 分解
+
+定义 $\text{Lyndon}$ 串为最小后缀等于本身的串。$\text{Lyndon}$ 串小于其所有非平凡的循环同构。
+
+若 $s=t_1 t_2 \dots t_k$ 且：
+
+- $\forall i$ $t_i$ 是 $\text{Lyndon}$ 串
+- $t_1 \ge t_2 \ge \dots \ge t_k$
+
+则称 $t_1 t_2\dots t_k$ 是 $s$ 的 $\text{Lyndon}$ 分解。可以证明 $\text{Lyndon}$ 分解存在且唯一。
+
+Duval 算法可以在 $\mathcal{O}(n)$ 时间求解一个串的 $\text{Lyndon}$ 分解。
+
+```cpp
+vector<string> duval(const string &s) {
+    vector<string> res;
+    for(int i=0;i<s.size();) {
+        int j=i,k=i+1;
+        while(k<s.size()&&s[j]<=s[k]) {
+            if(s[j]<s[k]) j=i;
+            else j++;
+            k++;
+        }
+        while(i<=j) {
+            res.emplace_back(s.substr(i,k-j));
+            i+=k-j;
+        }
+    }
+    return res;
+}
+```
+
 # AC自动机
 
 ```cpp
