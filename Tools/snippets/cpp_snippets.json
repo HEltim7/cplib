@@ -1451,7 +1451,7 @@
             "            tr[u].cnt+=tr[v].cnt;",
             "        }",
             "        else {",
-            "            pushdn(u);",
+            "            pushdn(u),pushdn(v);",
             "            int mid=(l+r)/2;",
             "            merge(tr[u].lc, tr[v].lc, l, mid);",
             "            merge(tr[u].rc, tr[v].rc, mid+1, r);",
