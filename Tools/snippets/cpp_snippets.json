@@ -3030,7 +3030,7 @@
             "    friend ostream &operator<<(ostream &os,const Modint &x) { return os<<x.v; }",
             "",
             "    constexpr Modint(L x=0): v((x%=mod)<0?x+mod:x) {}",
-            "}; using Mint=Modint<int,long long,998244353>;"
+            "}; using Mint=Modint<int,long long,${1|998244353,int(1e9)+7|}>;"
         ],
         "description": "Modulo Automation",
         "prefix": "#modint"
