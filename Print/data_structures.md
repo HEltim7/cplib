@@ -2092,6 +2092,82 @@ bool same(int u,int v) {
 
 `split` 则完全没有用了，因为根固定只能处理根到子节点的路径。
 
+## 维护树重心
+
+树重心有着良好的性质：
+
+- 重心的每颗子树大小都超过整棵树大小的一半（下取整）
+- 合并两颗树时，新重心在连接两个原重心的路径上
+- 加/删一个叶子节点，重心最多偏移一个节点
+
+利用LCT维护子树大小来利用性质1。
+
+```cpp
+struct Info {
+    int sz=0,vsz=0;
+
+    void pushup(const Info &l,const Info &r) {
+        sz=l.sz+r.sz+vsz+1;
+    }
+};
+
+```
+
+合并两棵树时，`split` 出两个原重心之间的链，然后类似树上二分的进行查找新重心。在查找的时候维护当前点在原树上的实左右子树大小来判断是否为重心，可以证明虚子树的大小必定不超过整树一半，因此仅需考虑实子树。
+
+```cpp
+int find(int u) {
+    int lsz=0,rsz=0,tot=info(u).sz;
+    int res=1e9,cnt=2-(tot&1);
+    while(u) {
+        pushdn(u);
+        int l=lsz+info(lch).sz;
+        int r=rsz+info(rch).sz;
+        if(l<=tot/2&&r<=tot/2) {
+            // 代码来自 luogu P4299 如果有两个重心，取编号最小的
+            res=min(res,u);
+            if(--cnt==0) break;
+        }
+        if(l<r) {
+            lsz+=info(lch).sz+info(u).vsz+1;
+            u=rch;
+        }
+        else {
+            rsz+=info(rch).sz+info(u).vsz+1;
+            u=lch;
+        }
+    }
+    splay(res);
+    return res;
+}
+
+```
+
+然后再额外用一个并查集维护重心信息。
+
+```cpp
+auto add_edge=[&](int x,int y) {
+    lct.link(x, y);
+    x=dsu.centroid(x);
+    y=dsu.centroid(y);
+    int rt=lct.split(x, y);
+    int c=lct.find(rt);
+    dsu.join(x, y, c);
+};
+```
+
+单次合并复杂度为 $\mathcal{O}(\log n)$。
+
+## 维护树直径
+
+和重心类似，直径也有很好的性质：新树直径的两端必然来自原树直径的四个端点。
+
+利用化边为点的技巧在LCT中维护路径和然后枚举端点取最大的即可。
+
+同样可以用一个并查集维护每棵树的直径端点。
+
+单次合并复杂度为 $\mathcal{O}(\log n)$。
+
 # Segment Set
 
 线段集（珂朵莉树）。插入删除的均摊复杂度为 $\mathcal{O}(\log n)$。

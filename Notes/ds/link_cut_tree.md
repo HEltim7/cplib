@@ -10,7 +10,8 @@
     - [最大生成树](#最大生成树)
   - [可撤销地维护MST](#可撤销地维护mst)
   - [维护有根树](#维护有根树)
-  - [维护树直径/重心](#维护树直径重心)
+  - [维护树重心](#维护树重心)
+  - [维护树直径](#维护树直径)
   - [维护割点割边](#维护割点割边)
 - [LCT 问题集](#lct-问题集)
   - [\[SDOI2008\]洞穴勘测](#sdoi2008洞穴勘测)
@@ -63,14 +64,15 @@
   - [首都](#首都)
     - [题意](#题意-11)
     - [思路](#思路-10)
+    - [实现](#实现-12)
   - [2023 HDU多校 3-1001 Magma Cave](#2023-hdu多校-3-1001-magma-cave)
     - [题意](#题意-12)
     - [思路](#思路-11)
-    - [实现](#实现-12)
+    - [实现](#实现-13)
   - [2022 ICPC 西安 A. Bridge](#2022-icpc-西安-a-bridge)
     - [题意](#题意-13)
     - [思路](#思路-12)
-    - [实现](#实现-13)
+    - [实现](#实现-14)
 
 
 在静态的树结构中，树剖是维护路径/子树修改的实用方法，但树剖无法处理动态的树结构。而LCT正是维护动态树结构的强大工具。LCT擅长维护树链信息，能很容易地实现路径修改+路径查询。
@@ -572,9 +574,81 @@ bool same(int u,int v) {
 
 `split` 则完全没有用了，因为根固定只能处理根到子节点的路径。
 
-## 维护树直径/重心
+## 维护树重心
 
-todo
+树重心有着良好的性质：
+
+- 重心的每颗子树大小都超过整棵树大小的一半（下取整）
+- 合并两颗树时，新重心在连接两个原重心的路径上
+- 加/删一个叶子节点，重心最多偏移一个节点
+
+利用LCT维护子树大小来利用性质1。
+
+```cpp
+struct Info {
+    int sz=0,vsz=0;
+
+    void pushup(const Info &l,const Info &r) {
+        sz=l.sz+r.sz+vsz+1;
+    }
+};
+
+```
+
+合并两棵树时，`split` 出两个原重心之间的链，然后类似树上二分的进行查找新重心。在查找的时候维护当前点在原树上的实左右子树大小来判断是否为重心，可以证明虚子树的大小必定不超过整树一半，因此仅需考虑实子树。
+
+```cpp
+int find(int u) {
+    int lsz=0,rsz=0,tot=info(u).sz;
+    int res=1e9,cnt=2-(tot&1);
+    while(u) {
+        pushdn(u);
+        int l=lsz+info(lch).sz;
+        int r=rsz+info(rch).sz;
+        if(l<=tot/2&&r<=tot/2) {
+            // 代码来自 luogu P4299 如果有两个重心，取编号最小的
+            res=min(res,u);
+            if(--cnt==0) break;
+        }
+        if(l<r) {
+            lsz+=info(lch).sz+info(u).vsz+1;
+            u=rch;
+        }
+        else {
+            rsz+=info(rch).sz+info(u).vsz+1;
+            u=lch;
+        }
+    }
+    splay(res);
+    return res;
+}
+
+```
+
+然后再额外用一个并查集维护重心信息。
+
+```cpp
+auto add_edge=[&](int x,int y) {
+    lct.link(x, y);
+    x=dsu.centroid(x);
+    y=dsu.centroid(y);
+    int rt=lct.split(x, y);
+    int c=lct.find(rt);
+    dsu.join(x, y, c);
+};
+```
+
+单次合并复杂度为 $\mathcal{O}(\log n)$。
+
+## 维护树直径
+
+和重心类似，直径也有很好的性质：新树直径的两端必然来自原树直径的四个端点。
+
+利用化边为点的技巧在LCT中维护路径和然后枚举端点取最大的即可。
+
+同样可以用一个并查集维护每棵树的直径端点。
+
+单次合并复杂度为 $\mathcal{O}(\log n)$。
 
 ## 维护割点割边
 
@@ -1478,11 +1552,96 @@ void solve() {
 
 ### 题意
 
+刚开始有 $n$ 个离散的点，执行 $m$ 次操作。
+
+- 在 $x,y$ 之间加一条边，保证 $x,y$ 不在同一个连通块中，即当前的图总是一个森林
+- 查询 $x$ 所在树的重心，如果有多个重心，去编号最小的一个
+- 查询所有树重心的异或和
+
+$n \le 10^5,m \le 2 \times 10^5$。
+
 ### 思路
 
 LCT维护树重心。
 
-根据重心性质，合并两颗树时，新重心在连接两个原重心的路径上。
+根据重心性质，合并两颗树时，新重心在连接两个原重心的路径上。那么在加完边之后，`split` 出两个原重心之间的链，重心就在所提取出的链上。
+
+考虑一个点是重心的充要条件：最大的子树大小不超过整棵树大小的一半。那么LCT必然要维护子树的大小，这个可以用维护虚子树信息的技巧解决。
+
+接下来需要在链上快速查找重心的位置，先考虑暴力怎么做：
+
+暴力遍历整条链的 splay，那么每个点在原树上的实子树的大小都能被计算出来。对于虚子树，其最大子树大小难以维护，但是观察到在加边之后，树上所有虚子树的大小都不可能超过整树大小的一半，否则在加边前就必然存在一颗子树大小超过原树大小的一半。因此我们只需要考虑实子树的大小。
+
+考虑优化暴力的过程，在遍历 splay 时，根据重心的性质，重心必定不在较小的一颗子树中（这里的大小指的是原树大小而非splay树大小），因此查找的复杂度就降为了 $\mathcal{O}(\log n)$。
+
+再开一个并查集保存重心即可。
+
+总的时间复杂度就是 $\mathcal{O}(m \log n)$。
+
+### 实现
+
+> [评测记录](https://www.luogu.com.cn/record/134206055)
+
+```cpp
+struct Info {
+    int sz=0,vsz=0;
+
+    void pushup(const Info &l,const Info &r) {
+        sz=l.sz+r.sz+vsz+1;
+    }
+};
+
+int find(int u) {
+    int lsz=0,rsz=0,tot=info(u).sz;
+    int res=1e9,cnt=2-(tot&1);
+    while(u) {
+        pushdn(u);
+        int l=lsz+info(lch).sz;
+        int r=rsz+info(rch).sz;
+        if(l<=tot/2&&r<=tot/2) {
+            res=min(res,u);
+            if(--cnt==0) break;
+        }
+        if(l<r) {
+            lsz+=info(lch).sz+info(u).vsz+1;
+            u=rch;
+        }
+        else {
+            rsz+=info(rch).sz+info(u).vsz+1;
+            u=lch;
+        }
+    }
+    splay(res);
+    return res;
+}
+
+void solve() {
+    int n,m,xsum=0;
+    cin>>n>>m;
+    DisjointUnionSet dsu(n);
+    for(int i=1;i<=n;i++) xsum^=i,lct.info(i).sz=1;
+    while(m--) {
+        string op;
+        int x,y;
+        cin>>op;
+        if(op.front()=='X') cout<<xsum<<endl;
+        else if(op.front()=='Q') {
+            cin>>x;
+            cout<<dsu.centroid(x)<<endl;
+        }
+        else {
+            cin>>x>>y;
+            lct.link(x, y);
+            x=dsu.centroid(x);
+            y=dsu.centroid(y);
+            int rt=lct.split(x, y);
+            int c=lct.find(rt);
+            dsu.join(x, y, c);
+            xsum^=x^y^c;
+        }
+    }
+}
+```
 
 ## [2023 HDU多校 3-1001 Magma Cave](https://vjudge.net/problem/HDU-7300)
 
