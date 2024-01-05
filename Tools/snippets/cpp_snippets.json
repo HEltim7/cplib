@@ -2049,6 +2049,44 @@
         "description": "Testcase Generator",
         "prefix": "#newg"
     },
+    "[General] Testcase Validator": {
+        "body": [
+            "#include <algorithm>",
+            "#include <array>",
+            "#include <cassert>",
+            "#include <chrono>",
+            "#include <cstdint>",
+            "#include <cstring>",
+            "#include <functional>",
+            "#include <iostream>",
+            "#include <map>",
+            "#include <numeric>",
+            "#include <queue>",
+            "#include <set>",
+            "#include <testlib.h>",
+            "#include <tuple>",
+            "#include <vector>",
+            "using namespace std;",
+            "",
+            "#define endl '\\n'",
+            "using LL = long long;",
+            "",
+            "void solve() {",
+            "    $0",
+            "}",
+            "",
+            "int main(int argc, char *argv[]) {",
+            "    ios::sync_with_stdio(0);",
+            "    cin.tie(nullptr);",
+            "    registerValidation(argc, argv);",
+            "    solve();",
+            "    inf.readEof();",
+            "    return 0;",
+            "}"
+        ],
+        "description": "Testcase Validator",
+        "prefix": "#newv"
+    },
     "[General] Time Duration": {
         "body": [
             "chrono::system_clock clock;",
@@ -3906,6 +3944,31 @@
         "description": "Double-ended Palindrome Automaton",
         "prefix": "#depam"
     },
+    "[String] Duval": {
+        "body": [
+            "vector<string> duval(const string &s) {",
+            "    vector<string> res;",
+            "    for(int i=0;i<s.size();) {",
+            "        int j=i,k=i+1;",
+            "        while(k<s.size()&&s[j]<=s[k]) {",
+            "            if(s[j]<s[k]) j=i;",
+            "            else j++;",
+            "            k++;",
+            "        }",
+            "        while(i<=j) {",
+            "            res.emplace_back(s.substr(i,k-j));",
+            "            i+=k-j;",
+            "        }",
+            "    }",
+            "    return res;",
+            "}"
+        ],
+        "description": "Duval 算法求 Lyndon 分解 O(n)",
+        "prefix": [
+            "#duval",
+            "#lyndon"
+        ]
+    },
     "[String] General Suffix Automaton (offline)": {
         "body": [
             "struct GeneralSuffixAutomaton {",
@@ -4615,32 +4678,6 @@
         "description": "SAM拓扑序",
         "prefix": "#sam_top"
     },
-    "[String] Duval": {
-        "prefix": [
-            "#duval",
-            "#lyndon"
-        ],
-        "body": [
-            "vector<string> duval(const string &s) {",
-            "    vector<string> res;",
-            "    for(int i=0;i<s.size();) {",
-            "        int j=i,k=i+1;",
-            "        while(k<s.size()&&s[j]<=s[k]) {",
-            "            if(s[j]<s[k]) j=i;",
-            "            else j++;",
-            "            k++;",
-            "        }",
-            "        while(i<=j) {",
-            "            res.emplace_back(s.substr(i,k-j));",
-            "            i+=k-j;",
-            "        }",
-            "    }",
-            "    return res;",
-            "}",
-        ],
-        "description": "Duval 算法求 Lyndon 分解 O(n)",
-    },
-    
     "[String] Z Function": {
         "body": [
             "vector<int> zfunc(const string &s) {",

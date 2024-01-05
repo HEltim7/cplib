@@ -86,7 +86,7 @@ namespace debug {
             chpair['(' ] = ')' ;
             chpair['[' ] = ']' ;
             chpair['{' ] = '}' ;
-            chpair['<' ] = '>' ;
+            // chpair['<' ] = '>' ;
             chpair['\"'] = '\"';
             chpair['\''] = '\'';
         }
